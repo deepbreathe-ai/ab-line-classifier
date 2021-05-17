@@ -5,7 +5,7 @@ import dill
 import datetime
 import numpy as np
 from math import ceil
-import sys
+import sys, shutil
 import tensorflow as tf
 from sklearn.model_selection import train_test_split, KFold
 from skopt import gp_minimize
@@ -17,7 +17,9 @@ from tensorflow.keras.callbacks import EarlyStopping, TensorBoard, ReduceLROnPla
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from src.models.models import *
 from src.visualization.visualization import *
+from src.data.preprocessor import Preprocessor
 import gc
+from tqdm import tqdm
 from tensorflow.keras import backend as k
 from tensorflow.keras.callbacks import Callback
 
@@ -82,11 +84,7 @@ def partition_dataset(val_split, test_split, save_dfs=True):
     val_df = frame_df[frame_df['Patient'].isin(val_pts)]
     test_df = frame_df[frame_df['Patient'].isin(test_pts)]
 
-    if not os.path.exists(cfg['PATHS']['PARTITIONS']):
-        os.makedirs(cfg['PATHS']['PARTITIONS'])
-
     if save_dfs:
-        cur_date = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
         train_df.to_csv(cfg['PATHS']['PARTITIONS'] + 'train_set.csv')
         val_df.to_csv(cfg['PATHS']['PARTITIONS'] + 'val_set.csv')
         test_df.to_csv(cfg['PATHS']['PARTITIONS'] + 'test_set.csv')
@@ -134,7 +132,6 @@ def log_test_results(model, test_generator, test_metrics, log_dir):
         tf.summary.image(name='Confusion Matrix (Test Set)', data=cm_img, step=0)
     return
 
-
 def train_model(model_def, preprocessing_fn, train_df, val_df, test_df, hparams, save_weights=False, log_dir=None, verbose=True):
     '''
 
@@ -150,57 +147,67 @@ def train_model(model_def, preprocessing_fn, train_df, val_df, test_df, hparams,
     :return: (model, test_metrics, test_generator)
     '''
 
-    # Create ImageDataGenerators. For training data: randomly zoom, stretch, horizontally flip image as data augmentation.
-    train_img_gen = ImageDataGenerator(zoom_range=cfg['TRAIN']['DATA_AUG']['ZOOM_RANGE'],
-                                       horizontal_flip=cfg['TRAIN']['DATA_AUG']['HORIZONTAL_FLIP'],
-                                       width_shift_range=cfg['TRAIN']['DATA_AUG']['WIDTH_SHIFT_RANGE'],
-                                       height_shift_range=cfg['TRAIN']['DATA_AUG']['HEIGHT_SHIFT_RANGE'],
-                                       shear_range=cfg['TRAIN']['DATA_AUG']['SHEAR_RANGE'],
-                                       rotation_range=cfg['TRAIN']['DATA_AUG']['ROTATION_RANGE'],
-                                       brightness_range=cfg['TRAIN']['DATA_AUG']['BRIGHTNESS_RANGE'],
-                                       preprocessing_function=preprocessing_fn)
-    val_img_gen = ImageDataGenerator(preprocessing_function=preprocessing_fn)
-    test_img_gen = ImageDataGenerator(preprocessing_function=preprocessing_fn)
+    train_set = tf.data.Dataset.from_tensor_slices(([cfg['PATHS']['FRAMES'] + f for f in train_df['Frame Path'].tolist()], train_df['Class']))
+    val_set = tf.data.Dataset.from_tensor_slices(([cfg['PATHS']['FRAMES'] + f for f in val_df['Frame Path'].tolist()], val_df['Class']))
+    test_set = tf.data.Dataset.from_tensor_slices(([cfg['PATHS']['FRAMES'] + f for f in test_df['Frame Path'].tolist()], test_df['Class']))
 
-    # Create DataFrameIterators
-    img_shape = tuple(cfg['DATA']['IMG_DIM'])
-    x_col = 'Frame Path'
-    y_col = 'Class Name'
-    class_mode = 'categorical'
-    train_generator = train_img_gen.flow_from_dataframe(dataframe=train_df, directory=cfg['PATHS']['FRAMES'],
-                                                        x_col=x_col, y_col=y_col, target_size=img_shape,
-                                                        batch_size=cfg['TRAIN']['BATCH_SIZE'],
-                                                        class_mode=class_mode, validate_filenames=True)
-    val_generator = val_img_gen.flow_from_dataframe(dataframe=val_df, directory=cfg['PATHS']['FRAMES'],
-                                                    x_col=x_col, y_col=y_col, target_size=img_shape,
-                                                    batch_size=cfg['TRAIN']['BATCH_SIZE'],
-                                                    class_mode=class_mode, validate_filenames=True)
-    test_generator = test_img_gen.flow_from_dataframe(dataframe=test_df, directory=cfg['PATHS']['FRAMES'],
-                                                      x_col=x_col, y_col=y_col, target_size=img_shape,
-                                                      batch_size=cfg['TRAIN']['BATCH_SIZE'],
-                                                      class_mode=class_mode, validate_filenames=True, shuffle=False)
+    preprocessor = Preprocessor(preprocessing_fn)
+    train_set = preprocessor.prepare(train_set, shuffle=True, augment=True)
+    val_set = preprocessor.prepare(val_set, shuffle=False, augment=False)
+    test_set = preprocessor.prepare(test_set, shuffle=False, augment=False)
+
+
+    # Create ImageDataGenerators. For training data: randomly zoom, stretch, horizontally flip image as data augmentation.
+    # train_img_gen = ImageDataGenerator(zoom_range=cfg['TRAIN']['DATA_AUG']['ZOOM_RANGE'],
+    #                                    horizontal_flip=cfg['TRAIN']['DATA_AUG']['HORIZONTAL_FLIP'],
+    #                                    width_shift_range=cfg['TRAIN']['DATA_AUG']['WIDTH_SHIFT_RANGE'],
+    #                                    height_shift_range=cfg['TRAIN']['DATA_AUG']['HEIGHT_SHIFT_RANGE'],
+    #                                    shear_range=cfg['TRAIN']['DATA_AUG']['SHEAR_RANGE'],
+    #                                    rotation_range=cfg['TRAIN']['DATA_AUG']['ROTATION_RANGE'],
+    #                                    brightness_range=cfg['TRAIN']['DATA_AUG']['BRIGHTNESS_RANGE'],
+    #                                    preprocessing_function=preprocessing_fn)
+    # val_img_gen = ImageDataGenerator(preprocessing_function=preprocessing_fn)
+    # test_img_gen = ImageDataGenerator(preprocessing_function=preprocessing_fn)
+    #
+    # # Create DataFrameIterators
+    # img_shape = tuple(cfg['DATA']['IMG_DIM'])
+    # x_col = 'Frame Path'
+    # y_col = 'Class Name'
+    # class_mode = 'categorical'
+    # train_generator = train_img_gen.flow_from_dataframe(dataframe=train_df, directory=cfg['PATHS']['FRAMES'],
+    #                                                     x_col=x_col, y_col=y_col, target_size=img_shape,
+    #                                                     batch_size=cfg['TRAIN']['BATCH_SIZE'],
+    #                                                     class_mode=class_mode, validate_filenames=True)
+    # val_generator = val_img_gen.flow_from_dataframe(dataframe=val_df, directory=cfg['PATHS']['FRAMES'],
+    #                                                 x_col=x_col, y_col=y_col, target_size=img_shape,
+    #                                                 batch_size=cfg['TRAIN']['BATCH_SIZE'],
+    #                                                 class_mode=class_mode, validate_filenames=True)
+    # test_generator = test_img_gen.flow_from_dataframe(dataframe=test_df, directory=cfg['PATHS']['FRAMES'],
+    #                                                   x_col=x_col, y_col=y_col, target_size=img_shape,
+    #                                                   batch_size=cfg['TRAIN']['BATCH_SIZE'],
+    #                                                   class_mode=class_mode, validate_filenames=True, shuffle=False)
 
     # Save model's ordering of class indices
-    dill.dump(train_generator.class_indices, open(cfg['PATHS']['CLASS_NAME_MAP'], 'wb'))
+    # dill.dump(train_generator.class_indices, open(cfg['PATHS']['CLASS_NAME_MAP'], 'wb'))
 
-    # Apply class imbalance strategy. We have many more X-rays negative for COVID-19 than positive.
-    histogram = np.bincount(np.array(train_generator.labels).astype(int))  # Get class distribution
+    # Get class weights based on prevalences
+    histogram = np.bincount(train_df['Class'].to_numpy().astype(int))  # Get class distribution
     class_weight = get_class_weights(histogram)
 
     # Define performance metrics
-    n_classes = len(cfg['DATA']['CLASSES'])
+    classes = cfg['DATA']['CLASSES']
+    n_classes = len(classes)
     threshold = 1.0 / n_classes # Binary classification threshold for a class
     metrics = ['accuracy', AUC(name='auc'), F1Score(name='f1score', num_classes=n_classes)]
-    metrics += [Precision(name='precision_' + c, thresholds=threshold, class_id=train_generator.class_indices[c]) for c in train_generator.class_indices]
-    metrics += [Recall(name='recall_' + c, thresholds=threshold, class_id=train_generator.class_indices[c]) for c in train_generator.class_indices]
+    metrics += [Precision(name='precision_' + classes[i], thresholds=threshold, class_id=i) for i in range(n_classes)]
+    metrics += [Recall(name='recall_' + classes[i], thresholds=threshold, class_id=i) for i in range(n_classes)]
 
     print('Training distribution: ',
-          ['Class ' + list(train_generator.class_indices.keys())[i] + ': ' + str(histogram[i]) + '. '
+          ['Class ' + classes[i] + ': ' + str(histogram[i]) + '. '
            for i in range(len(histogram))])
     input_shape = cfg['DATA']['IMG_DIM'] + [3]
 
     # Compute output bias
-    histogram = np.bincount(train_df['Class'].astype(int))
     output_bias = np.log([histogram[i] / (np.sum(histogram) - histogram[i]) for i in range(histogram.shape[0])])
 
     # Define the model
@@ -214,10 +221,7 @@ def train_model(model_def, preprocessing_fn, train_df, val_df, test_df, hparams,
         callbacks.append(tensorboard)
 
     # Train the model.
-    steps_per_epoch = ceil(train_generator.n / train_generator.batch_size)
-    val_steps = ceil(val_generator.n / val_generator.batch_size)
-    history = model.fit(train_generator, steps_per_epoch=steps_per_epoch, epochs=cfg['TRAIN']['EPOCHS'],
-                        validation_data=val_generator, validation_steps=val_steps, callbacks=callbacks,
+    history = model.fit(train_set, epochs=cfg['TRAIN']['EPOCHS'], validation_data=val_set, callbacks=callbacks,
                         verbose=verbose, class_weight=class_weight)
 
     # Save the model's weights
@@ -229,15 +233,15 @@ def train_model(model_def, preprocessing_fn, train_df, val_df, test_df, hparams,
             save_model(model, model_path)  # Save the model's weights
 
     # Run the model on the test set and print the resulting performance metrics.
-    test_results = model.evaluate(test_generator, verbose=1)
+    test_results = model.evaluate(test_set, verbose=1)
     test_metrics = {}
     test_summary_str = [['**Metric**', '**Value**']]
     for metric, value in zip(model.metrics_names, test_results):
         test_metrics[metric] = value
         test_summary_str.append([metric, str(value)])
     if log_dir is not None:
-        log_test_results(model, test_generator, test_metrics, log_dir)
-    return model, test_metrics, test_generator
+        log_test_results(model, test_set, test_metrics, log_dir)
+    return model, test_metrics, test_set
 
 
 def train_single(hparams=None, save_weights=False, write_logs=False):

@@ -9,6 +9,7 @@ results/
 !results/experiments/.gitkeep
 img/heatmaps
 !img/heatmaps/.gitkeep
+!src/data/
 
 # PYTHON ***************************************************************************
 # Byte-compiled / optimized / DLL files
