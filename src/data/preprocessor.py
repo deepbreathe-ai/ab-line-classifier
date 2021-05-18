@@ -1,5 +1,6 @@
 import tensorflow as tf
 from tensorflow.keras.layers.experimental.preprocessing import *
+from tensorflow.keras import layers
 import os, yaml
 
 cfg = yaml.full_load(open(os.getcwd() + "/config.yml", 'r'))
@@ -12,9 +13,11 @@ class Preprocessor:
         self.img_dir = cfg['PATHS']['FRAMES']
         self.autotune = tf.data.AUTOTUNE
         self.data_augmentation = tf.keras.Sequential([
+            RandomBrightness(factor=cfg['TRAIN']['DATA_AUG']['BRIGHTNESS_RANGE']),
+            RandomContrast(cfg['TRAIN']['DATA_AUG']['CONTRAST_RANGE']),
             RandomFlip("horizontal"),
             RandomRotation(cfg['TRAIN']['DATA_AUG']['ROTATION_RANGE'], fill_mode='constant'),
-            RandomZoom(cfg['TRAIN']['DATA_AUG']['ZOOM_RANGE'])
+            RandomZoom(cfg['TRAIN']['DATA_AUG']['ZOOM_RANGE'], fill_mode='constant')
         ])
         self.input_scaler = preprocess_fn
 
@@ -44,3 +47,14 @@ class Preprocessor:
         image_decoded = tf.image.decode_jpeg(image_str, channels=3)
         image = tf.cast(image_decoded, tf.float32)
         return tf.image.resize(image, cfg['DATA']['IMG_DIM']), tf.one_hot(label, self.n_classes)
+
+
+
+class RandomBrightness(layers.Layer):
+
+  def __init__(self, factor=0.5, **kwargs):
+    super().__init__(**kwargs)
+    self.factor = factor
+
+  def call(self, image):
+    return tf.image.stateless_random_brightness(image, self.factor, (123, 0))

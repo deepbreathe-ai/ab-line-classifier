@@ -83,6 +83,9 @@ def partition_dataset(val_split, test_split, save_dfs=True):
     train_df = frame_df[frame_df['Patient'].isin(train_pts)]
     val_df = frame_df[frame_df['Patient'].isin(val_pts)]
     test_df = frame_df[frame_df['Patient'].isin(test_pts)]
+    print('TRAIN/VAL/TEST SPLIT: [{}, {}, {}] frames, [{}, {}, {}] patients'
+          .format(train_df.shape[0], val_df.shape[0], test_df.shape[0], train_pts.shape[0], val_pts.shape[0],
+                  test_pts.shape[0]))
 
     if save_dfs:
         train_df.to_csv(cfg['PATHS']['PARTITIONS'] + 'train_set.csv')
@@ -91,21 +94,21 @@ def partition_dataset(val_split, test_split, save_dfs=True):
     return train_df, val_df, test_df
 
 
-def log_test_results(model, test_generator, test_metrics, log_dir):
+def log_test_results(model, test_set, test_df, test_metrics, log_dir):
     '''
     Visualize performance of a trained model on the test set. Optionally save the model.
     :param model: A trained TensorFlow model
-    :param test_generator: A TensorFlow image generator for the test set
+    :param test_set: A TensorFlow image generator for the test set
     :param test_metrics: Dict of test set performance metrics
     :param log_dir: Path to write TensorBoard logs
     '''
 
     # Visualization of test results
-    test_predictions = model.predict(test_generator, verbose=0)
-    test_labels = test_generator.labels
-    plt = plot_roc(test_labels, test_predictions, list(test_generator.class_indices.keys()), dir_path=cfg['PATHS']['IMAGES'])
+    test_predictions = model.predict(test_set, verbose=0)
+    test_labels = test_df['Class'].to_numpy()
+    plt = plot_roc(test_labels, test_predictions, list(range(len(cfg['DATA']['CLASSES']))), dir_path=cfg['PATHS']['IMAGES'])
     roc_img = plot_to_tensor()
-    plt = plot_confusion_matrix(test_labels, test_predictions, list(test_generator.class_indices.keys()), dir_path=cfg['PATHS']['IMAGES'])
+    plt = plot_confusion_matrix(test_labels, test_predictions, list(range(len(cfg['DATA']['CLASSES']))), dir_path=cfg['PATHS']['IMAGES'])
     cm_img = plot_to_tensor()
 
     # Log test set results and plots in TensorBoard
@@ -155,7 +158,6 @@ def train_model(model_def, preprocessing_fn, train_df, val_df, test_df, hparams,
     train_set = preprocessor.prepare(train_set, shuffle=True, augment=True)
     val_set = preprocessor.prepare(val_set, shuffle=False, augment=False)
     test_set = preprocessor.prepare(test_set, shuffle=False, augment=False)
-
 
     # Create ImageDataGenerators. For training data: randomly zoom, stretch, horizontally flip image as data augmentation.
     # train_img_gen = ImageDataGenerator(zoom_range=cfg['TRAIN']['DATA_AUG']['ZOOM_RANGE'],
@@ -240,7 +242,7 @@ def train_model(model_def, preprocessing_fn, train_df, val_df, test_df, hparams,
         test_metrics[metric] = value
         test_summary_str.append([metric, str(value)])
     if log_dir is not None:
-        log_test_results(model, test_set, test_metrics, log_dir)
+        log_test_results(model, test_set, test_df, test_metrics, log_dir)
     return model, test_metrics, test_set
 
 

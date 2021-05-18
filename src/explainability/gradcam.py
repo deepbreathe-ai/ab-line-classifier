@@ -13,6 +13,7 @@ from tensorflow.keras.models import Model
 from src.experiments.predict import predict_instance, predict_set
 from src.visualization.visualization import visualize_heatmap
 from src.models.models import get_model
+from src.data.preprocessor import Preprocessor
 
 cfg = yaml.full_load(open(os.getcwd() + "/config.yml", 'r'))
 
@@ -49,18 +50,20 @@ class GradCAMExplainer:
         '''
 
         # Create ImageDataGenerator for test set
-        test_img_gen = ImageDataGenerator(preprocessing_function=self.preprocessing_fn)
-        test_generator = test_img_gen.flow_from_dataframe(dataframe=frame_df, directory=self.frames_dir,
-                                                          x_col=self.x_col, y_col=self.y_col, target_size=self.img_dim,
-                                                          batch_size=1, class_mode='categorical',
-                                                          validate_filenames=False, shuffle=False)
+        dataset = tf.data.Dataset.from_tensor_slices(
+            ([cfg['PATHS']['FRAMES'] + f for f in frame_df['Frame Path'].tolist()], frame_df['Class']))
+        preprocessor = Preprocessor(self.preprocessing_fn)
+        dataset = preprocessor.prepare(dataset, shuffle=False, augment=False)
+        # test_img_gen = ImageDataGenerator(preprocessing_function=self.preprocessing_fn)
+        # test_generator = test_img_gen.flow_from_dataframe(dataframe=frame_df, directory=self.frames_dir,
+        #                                                   x_col=self.x_col, y_col=self.y_col, target_size=self.img_dim,
+        #                                                   batch_size=1, class_mode='categorical',
+        #                                                   validate_filenames=False, shuffle=False)
 
         preds, probs = predict_set(self.model, self.preprocessing_fn, frame_df)
 
-        for idx in tqdm(range(probs.shape[0])):
-
-            # Get idx'th preprocessed image in the  dataset
-            x, y = test_generator.next()
+        idx = 0
+        for (x, y) in dataset:
 
             # Get the corresponding original image (no preprocessing)
             orig_img = cv2.imread(os.path.join(self.frames_dir, frame_df[self.x_col].iloc[idx]))
@@ -89,6 +92,7 @@ class GradCAMExplainer:
             label = frame_df['Class'].iloc[idx]
             _ = visualize_heatmap(orig_img, heatmap_img, img_filename, label, probs[idx], self.classes,
                                       dir_path=self.save_img_dir)
+            idx += 1
         return heatmap
 
 

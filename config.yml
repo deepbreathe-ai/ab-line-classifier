@@ -3,7 +3,7 @@ PATHS:
   FRAME_TABLE: 'data/frames.csv'   # Path to all LUS frames in the dataset
   DATABASE_QUERY: 'data/parenchymal_clips.csv'
   RAW_CLIPS: 'data/raw_clips/'
-  FRAMES: 'B:\\Datasets\\ab-frames' #'D:\\Documents\\Data\\ab-frames'
+  FRAMES: 'B:\\Datasets\\ab-frames\\' #'D:\\Documents\\Data\\ab-frames'
   PARTITIONS: 'data/partitions/'
   TEST_DF: 'data/partitions/test_set.csv'
   HEATMAPS: 'img/heatmaps'
@@ -34,13 +34,14 @@ TRAIN:
   MIXED_PRECISION: false                         # Necessary for training with Tensor Cores
   N_FOLDS: 10
   DATA_AUG:
-    ZOOM_RANGE: 0.1
+    ZOOM_RANGE: 0.2
     HORIZONTAL_FLIP: true
     WIDTH_SHIFT_RANGE: 0.2
     HEIGHT_SHIFT_RANGE: 0.2
     SHEAR_RANGE: 10
     ROTATION_RANGE: 45
-    BRIGHTNESS_RANGE: [0.7, 1.3]
+    BRIGHTNESS_RANGE: 0.3
+    CONTRAST_RANGE: 0.1
   HPARAM_SEARCH:
     N_EVALS: 500
     HPARAM_OBJECTIVE: 'auc'
@@ -101,8 +102,7 @@ HPARAMS:
   CUTOFFVGG16:
     LR_EXTRACT: 0.0001
     LR_FINETUNE: 0.00001
-    DROPOUT: 0.35
-    NODES_DENSE0: 32
+    DROPOUT: 0.4
     CUTOFF_LAYER: 10
     FINETUNE_LAYER: 7
     EXTRACT_EPOCHS: 10
