@@ -150,47 +150,16 @@ def train_model(model_def, preprocessing_fn, train_df, val_df, test_df, hparams,
     :return: (model, test_metrics, test_generator)
     '''
 
+    # Create TF datasets for training, validation and test sets
     train_set = tf.data.Dataset.from_tensor_slices(([cfg['PATHS']['FRAMES'] + f for f in train_df['Frame Path'].tolist()], train_df['Class']))
     val_set = tf.data.Dataset.from_tensor_slices(([cfg['PATHS']['FRAMES'] + f for f in val_df['Frame Path'].tolist()], val_df['Class']))
     test_set = tf.data.Dataset.from_tensor_slices(([cfg['PATHS']['FRAMES'] + f for f in test_df['Frame Path'].tolist()], test_df['Class']))
 
+    # Set up preprocessing transformations to apply to each item in dataset
     preprocessor = Preprocessor(preprocessing_fn)
     train_set = preprocessor.prepare(train_set, shuffle=True, augment=True)
     val_set = preprocessor.prepare(val_set, shuffle=False, augment=False)
     test_set = preprocessor.prepare(test_set, shuffle=False, augment=False)
-
-    # Create ImageDataGenerators. For training data: randomly zoom, stretch, horizontally flip image as data augmentation.
-    # train_img_gen = ImageDataGenerator(zoom_range=cfg['TRAIN']['DATA_AUG']['ZOOM_RANGE'],
-    #                                    horizontal_flip=cfg['TRAIN']['DATA_AUG']['HORIZONTAL_FLIP'],
-    #                                    width_shift_range=cfg['TRAIN']['DATA_AUG']['WIDTH_SHIFT_RANGE'],
-    #                                    height_shift_range=cfg['TRAIN']['DATA_AUG']['HEIGHT_SHIFT_RANGE'],
-    #                                    shear_range=cfg['TRAIN']['DATA_AUG']['SHEAR_RANGE'],
-    #                                    rotation_range=cfg['TRAIN']['DATA_AUG']['ROTATION_RANGE'],
-    #                                    brightness_range=cfg['TRAIN']['DATA_AUG']['BRIGHTNESS_RANGE'],
-    #                                    preprocessing_function=preprocessing_fn)
-    # val_img_gen = ImageDataGenerator(preprocessing_function=preprocessing_fn)
-    # test_img_gen = ImageDataGenerator(preprocessing_function=preprocessing_fn)
-    #
-    # # Create DataFrameIterators
-    # img_shape = tuple(cfg['DATA']['IMG_DIM'])
-    # x_col = 'Frame Path'
-    # y_col = 'Class Name'
-    # class_mode = 'categorical'
-    # train_generator = train_img_gen.flow_from_dataframe(dataframe=train_df, directory=cfg['PATHS']['FRAMES'],
-    #                                                     x_col=x_col, y_col=y_col, target_size=img_shape,
-    #                                                     batch_size=cfg['TRAIN']['BATCH_SIZE'],
-    #                                                     class_mode=class_mode, validate_filenames=True)
-    # val_generator = val_img_gen.flow_from_dataframe(dataframe=val_df, directory=cfg['PATHS']['FRAMES'],
-    #                                                 x_col=x_col, y_col=y_col, target_size=img_shape,
-    #                                                 batch_size=cfg['TRAIN']['BATCH_SIZE'],
-    #                                                 class_mode=class_mode, validate_filenames=True)
-    # test_generator = test_img_gen.flow_from_dataframe(dataframe=test_df, directory=cfg['PATHS']['FRAMES'],
-    #                                                   x_col=x_col, y_col=y_col, target_size=img_shape,
-    #                                                   batch_size=cfg['TRAIN']['BATCH_SIZE'],
-    #                                                   class_mode=class_mode, validate_filenames=True, shuffle=False)
-
-    # Save model's ordering of class indices
-    # dill.dump(train_generator.class_indices, open(cfg['PATHS']['CLASS_NAME_MAP'], 'wb'))
 
     # Get class weights based on prevalences
     histogram = np.bincount(train_df['Class'].to_numpy().astype(int))  # Get class distribution

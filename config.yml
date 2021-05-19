@@ -10,7 +10,7 @@ PATHS:
   LOGS: 'results/logs/'
   IMAGES: 'results/figures/'
   MODEL_WEIGHTS: 'results/models/'
-  MODEL_TO_LOAD: 'results/models/cutoffvgg_may9.h5'
+  MODEL_TO_LOAD: 'results/models/vgg16_2.h5'
   CLASS_NAME_MAP: 'data/serializations/output_class_indices.pkl'
   BATCH_PREDS: 'results/predictions/'
   METRICS: './results/metrics/'
@@ -39,7 +39,7 @@ TRAIN:
     WIDTH_SHIFT_RANGE: 0.2
     HEIGHT_SHIFT_RANGE: 0.2
     SHEAR_RANGE: 10
-    ROTATION_RANGE: 45
+    ROTATION_RANGE: 0.125   # Fraction of 2*pi
     BRIGHTNESS_RANGE: 0.3
     CONTRAST_RANGE: 0.1
   HPARAM_SEARCH:
@@ -100,7 +100,7 @@ HPARAMS:
     BLOCKS: 1
     INIT_FILTERS: 32
   CUTOFFVGG16:
-    LR_EXTRACT: 0.0001
+    LR_EXTRACT: 0.001
     LR_FINETUNE: 0.00001
     DROPOUT: 0.4
     CUTOFF_LAYER: 10

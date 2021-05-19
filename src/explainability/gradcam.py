@@ -49,17 +49,13 @@ class GradCAMExplainer:
         :param dir_path: Path to directory to save Grad-CAM heatmap visualizations
         '''
 
-        # Create ImageDataGenerator for test set
+        # Create TF Dataset for test set
         dataset = tf.data.Dataset.from_tensor_slices(
             ([cfg['PATHS']['FRAMES'] + f for f in frame_df['Frame Path'].tolist()], frame_df['Class']))
         preprocessor = Preprocessor(self.preprocessing_fn)
         dataset = preprocessor.prepare(dataset, shuffle=False, augment=False)
-        # test_img_gen = ImageDataGenerator(preprocessing_function=self.preprocessing_fn)
-        # test_generator = test_img_gen.flow_from_dataframe(dataframe=frame_df, directory=self.frames_dir,
-        #                                                   x_col=self.x_col, y_col=self.y_col, target_size=self.img_dim,
-        #                                                   batch_size=1, class_mode='categorical',
-        #                                                   validate_filenames=False, shuffle=False)
 
+        # Make prediction for each example in test set
         preds, probs = predict_set(self.model, self.preprocessing_fn, frame_df)
 
         idx = 0
