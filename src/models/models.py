@@ -315,8 +315,7 @@ def residual_block(model_config, X, num_filters: int, stride: int = 1, kernel_si
     conv_layer = Conv2D(num_filters,
                         kernel_size=kernel_size,
                         strides=stride,
-                        padding='same',
-                        kernel_regularizer=l2(l2_lambda))
+                        padding='same')
     # X = input
     if conv_first:
         X = conv_layer(X)
@@ -414,8 +413,9 @@ def custom_resnetv2(model_config, input_shape, metrics, n_classes, mixed_precisi
     # Model head
     X = GlobalAveragePooling2D(name='global_avgpool')(X)
     X = Dropout(dropout)(X)
-    #X = Dense(nodes_dense0, kernel_initializer='he_uniform', activity_regularizer=l2(l2_lambda), activation='relu',
-              #name='fc0')(X)
+    X = Dense(nodes_dense0, kernel_initializer='he_uniform', activity_regularizer=l2(l2_lambda), activation='relu',
+              name='fc0')(X)
+    X = Dropout(dropout)(X)
     Y = Dense(n_classes, activation='softmax', dtype='float32', name='output')(X)
 
     # Set model loss function, optimizer, metrics.
