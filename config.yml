@@ -3,7 +3,7 @@ PATHS:
   FRAME_TABLE: 'data/frames.csv'   # Path to all LUS frames in the dataset
   DATABASE_QUERY: 'data/parenchymal_clips.csv'
   RAW_CLIPS: 'data/raw_clips/'
-  FRAMES: 'B:\\Datasets\\ab-frames3'
+  FRAMES: 'data/frames/'
   PARTITIONS: 'data/partitions/'
   TEST_DF: 'data/partitions/test_set.csv'
   HEATMAPS: 'img/heatmaps'
@@ -24,16 +24,16 @@ DATA:
   CLASSES: ['a_lines', 'b_lines']   # Classes for binary classification
 
 TRAIN:
-  MODEL_DEF: 'cutoffvgg16'   # One of {'vgg16', 'mobilenetv2', 'xception', 'efficientnetb7', 'custom_resnetv2', 'cutoffvgg16'}
+  MODEL_DEF: 'cutoffmobilenetv2'   # One of {'vgg16', 'mobilenetv2', 'xception', 'efficientnetb7', 'custom_resnetv2', 'cutoffvgg16', 'cutoffmobilenetv2'}
   EXPERIMENT_TYPE: 'single_train'               # One of {'single_train', 'cross_validation', 'hparam_search'}
   N_CLASSES: 2
-  BATCH_SIZE: 256
-  EPOCHS: 15
+  BATCH_SIZE: 128
+  EPOCHS: 1
   PATIENCE: 15
   METRIC_PREFERENCE: ['auc', 'recall', 'precision', 'loss']
   NUM_GPUS: 1
   MIXED_PRECISION: false                         # Necessary for training with Tensor Cores
-  N_FOLDS: 10
+  N_FOLDS: 1
   DATA_AUG:
     ZOOM_RANGE: 0.1
     HORIZONTAL_FLIP: true
@@ -102,6 +102,14 @@ HPARAMS:
     CUTOFF_LAYER: 10
     FINETUNE_LAYER: 7
     EXTRACT_EPOCHS: 10
+  CUTOFFMOBILENETV2:
+    LR_EXTRACT: 0.0001
+    LR_FINETUNE: 0.00001
+    DROPOUT: 0.35
+    CUTOFF_LAYER: 26
+    FINETUNE_LAYER: 17
+    EXTRACT_EPOCHS: 10
+
 
 HPARAM_SEARCH:
   MOBILENETV2:
@@ -137,3 +145,16 @@ HPARAM_SEARCH:
     INIT_FILTERS:
       TYPE: 'set'
       RANGE: [32, 64]
+  CUTOFFMOBILENETV2:
+    LR_EXTRACT:
+      TYPE: 'float_log'
+      RANGE: [0.00001, 0.001]
+    LR_FINETUNE:
+      TYPE: 'float_log'
+      RANGE: [0.000001, 0.00001]
+    DROPOUT:
+      TYPE: 'float_uniform'
+      RANGE: [0.0, 0.5]
+    EXTRACT_EPOCHS:
+      TYPE: 'int_uniform'
+      RANGE: [2,4]

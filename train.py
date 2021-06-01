@@ -103,7 +103,7 @@ def log_test_results(model, test_generator, test_metrics, log_dir):
     '''
 
     # Visualization of test results
-    test_predictions = model.predict(test_generator, verbose=0)
+    test_predictions = model.predict(test_generator, verbose=1)
     test_labels = test_generator.labels
     plt = plot_roc(test_labels, test_predictions, list(test_generator.class_indices.keys()), dir_path=cfg['PATHS']['IMAGES'])
     roc_img = plot_to_tensor()
@@ -150,94 +150,97 @@ def train_model(model_def, preprocessing_fn, train_df, val_df, test_df, hparams,
     :return: (model, test_metrics, test_generator)
     '''
 
-    # Create ImageDataGenerators. For training data: randomly zoom, stretch, horizontally flip image as data augmentation.
-    train_img_gen = ImageDataGenerator(zoom_range=cfg['TRAIN']['DATA_AUG']['ZOOM_RANGE'],
-                                       horizontal_flip=cfg['TRAIN']['DATA_AUG']['HORIZONTAL_FLIP'],
-                                       width_shift_range=cfg['TRAIN']['DATA_AUG']['WIDTH_SHIFT_RANGE'],
-                                       height_shift_range=cfg['TRAIN']['DATA_AUG']['HEIGHT_SHIFT_RANGE'],
-                                       shear_range=cfg['TRAIN']['DATA_AUG']['SHEAR_RANGE'],
-                                       rotation_range=cfg['TRAIN']['DATA_AUG']['ROTATION_RANGE'],
-                                       brightness_range=cfg['TRAIN']['DATA_AUG']['BRIGHTNESS_RANGE'],
-                                       preprocessing_function=preprocessing_fn)
-    val_img_gen = ImageDataGenerator(preprocessing_function=preprocessing_fn)
-    test_img_gen = ImageDataGenerator(preprocessing_function=preprocessing_fn)
+    with tf.device('/gpu:0'):
 
-    # Create DataFrameIterators
-    img_shape = tuple(cfg['DATA']['IMG_DIM'])
-    x_col = 'Frame Path'
-    y_col = 'Class Name'
-    class_mode = 'categorical'
-    train_generator = train_img_gen.flow_from_dataframe(dataframe=train_df, directory=cfg['PATHS']['FRAMES'],
+        # Create ImageDataGenerators. For training data: randomly zoom, stretch, horizontally flip image as data augmentation.
+        train_img_gen = ImageDataGenerator(zoom_range=cfg['TRAIN']['DATA_AUG']['ZOOM_RANGE'],
+                                        horizontal_flip=cfg['TRAIN']['DATA_AUG']['HORIZONTAL_FLIP'],
+                                        width_shift_range=cfg['TRAIN']['DATA_AUG']['WIDTH_SHIFT_RANGE'],
+                                        height_shift_range=cfg['TRAIN']['DATA_AUG']['HEIGHT_SHIFT_RANGE'],
+                                        shear_range=cfg['TRAIN']['DATA_AUG']['SHEAR_RANGE'],
+                                        rotation_range=cfg['TRAIN']['DATA_AUG']['ROTATION_RANGE'],
+                                        brightness_range=cfg['TRAIN']['DATA_AUG']['BRIGHTNESS_RANGE'],
+                                        preprocessing_function=preprocessing_fn)
+        val_img_gen = ImageDataGenerator(preprocessing_function=preprocessing_fn)
+        test_img_gen = ImageDataGenerator(preprocessing_function=preprocessing_fn)
+
+        # Create DataFrameIterators
+        img_shape = tuple(cfg['DATA']['IMG_DIM'])
+        x_col = 'Frame Path'
+        y_col = 'Class Name'
+        class_mode = 'categorical'
+        train_generator = train_img_gen.flow_from_dataframe(dataframe=train_df, directory=cfg['PATHS']['FRAMES'],
+                                                            x_col=x_col, y_col=y_col, target_size=img_shape,
+                                                            batch_size=cfg['TRAIN']['BATCH_SIZE'],
+                                                            class_mode=class_mode, validate_filenames=True)
+        val_generator = val_img_gen.flow_from_dataframe(dataframe=val_df, directory=cfg['PATHS']['FRAMES'],
                                                         x_col=x_col, y_col=y_col, target_size=img_shape,
                                                         batch_size=cfg['TRAIN']['BATCH_SIZE'],
                                                         class_mode=class_mode, validate_filenames=True)
-    val_generator = val_img_gen.flow_from_dataframe(dataframe=val_df, directory=cfg['PATHS']['FRAMES'],
-                                                    x_col=x_col, y_col=y_col, target_size=img_shape,
-                                                    batch_size=cfg['TRAIN']['BATCH_SIZE'],
-                                                    class_mode=class_mode, validate_filenames=True)
-    test_generator = test_img_gen.flow_from_dataframe(dataframe=test_df, directory=cfg['PATHS']['FRAMES'],
-                                                      x_col=x_col, y_col=y_col, target_size=img_shape,
-                                                      batch_size=cfg['TRAIN']['BATCH_SIZE'],
-                                                      class_mode=class_mode, validate_filenames=True, shuffle=False)
+        test_generator = test_img_gen.flow_from_dataframe(dataframe=test_df, directory=cfg['PATHS']['FRAMES'],
+                                                        x_col=x_col, y_col=y_col, target_size=img_shape,
+                                                        batch_size=cfg['TRAIN']['BATCH_SIZE'],
+                                                        class_mode=class_mode, validate_filenames=True, shuffle=False)
 
-    # Save model's ordering of class indices
-    dill.dump(train_generator.class_indices, open(cfg['PATHS']['CLASS_NAME_MAP'], 'wb'))
+        # Save model's ordering of class indices
+        dill.dump(train_generator.class_indices, open(cfg['PATHS']['CLASS_NAME_MAP'], 'wb'))
 
-    # Apply class imbalance strategy. We have many more X-rays negative for COVID-19 than positive.
-    histogram = np.bincount(np.array(train_generator.labels).astype(int))  # Get class distribution
-    class_weight = get_class_weights(histogram)
+        # Apply class imbalance strategy. We have many more X-rays negative for COVID-19 than positive.
+        histogram = np.bincount(np.array(train_generator.labels).astype(int))  # Get class distribution
+        class_weight = get_class_weights(histogram)
 
-    # Define performance metrics
-    n_classes = len(cfg['DATA']['CLASSES'])
-    threshold = 1.0 / n_classes # Binary classification threshold for a class
-    metrics = ['accuracy', AUC(name='auc'), F1Score(name='f1score', num_classes=n_classes)]
-    metrics += [Precision(name='precision_' + c, thresholds=threshold, class_id=train_generator.class_indices[c]) for c in train_generator.class_indices]
-    metrics += [Recall(name='recall_' + c, thresholds=threshold, class_id=train_generator.class_indices[c]) for c in train_generator.class_indices]
+        # Define performance metrics
+        n_classes = len(cfg['DATA']['CLASSES'])
+        threshold = 1.0 / n_classes # Binary classification threshold for a class
+        metrics = ['accuracy', AUC(name='auc'), F1Score(name='f1score', num_classes=n_classes)]
+        metrics += [Precision(name='precision_' + c, thresholds=threshold, class_id=train_generator.class_indices[c]) for c in train_generator.class_indices]
+        metrics += [Recall(name='recall_' + c, thresholds=threshold, class_id=train_generator.class_indices[c]) for c in train_generator.class_indices]
 
-    print('Training distribution: ',
-          ['Class ' + list(train_generator.class_indices.keys())[i] + ': ' + str(histogram[i]) + '. '
-           for i in range(len(histogram))])
-    input_shape = cfg['DATA']['IMG_DIM'] + [3]
+        print('Training distribution: ',
+            ['Class ' + list(train_generator.class_indices.keys())[i] + ': ' + str(histogram[i]) + '. '
+            for i in range(len(histogram))])
+        input_shape = cfg['DATA']['IMG_DIM'] + [3]
 
-    # Compute output bias
-    histogram = np.bincount(train_df['Class'].astype(int))
-    output_bias = np.log([histogram[i] / (np.sum(histogram) - histogram[i]) for i in range(histogram.shape[0])])
+        # Compute output bias
+        histogram = np.bincount(train_df['Class'].astype(int))
+        output_bias = np.log([histogram[i] / (np.sum(histogram) - histogram[i]) for i in range(histogram.shape[0])])
 
-    # Define the model
-    model = model_def(hparams, input_shape, metrics, cfg['TRAIN']['N_CLASSES'],
-                      mixed_precision=cfg['TRAIN']['MIXED_PRECISION'], output_bias=output_bias)
+        # Define the model
+        model = model_def(hparams, input_shape, metrics, cfg['TRAIN']['N_CLASSES'],
+                        mixed_precision=cfg['TRAIN']['MIXED_PRECISION'], output_bias=output_bias)
 
-    # Set training callbacks.
-    callbacks = define_callbacks(cfg)
-    if log_dir is not None:
-        tensorboard = TensorBoard(log_dir=log_dir, histogram_freq=1)
-        callbacks.append(tensorboard)
+        # Set training callbacks.
+        callbacks = define_callbacks(cfg)
+        if log_dir is not None:
+            tensorboard = TensorBoard(log_dir=log_dir, histogram_freq=1)
+            callbacks.append(tensorboard)
 
-    # Train the model.
-    steps_per_epoch = ceil(train_generator.n / train_generator.batch_size)
-    val_steps = ceil(val_generator.n / val_generator.batch_size)
-    history = model.fit(train_generator, steps_per_epoch=steps_per_epoch, epochs=cfg['TRAIN']['EPOCHS'],
-                        validation_data=val_generator, validation_steps=val_steps, callbacks=callbacks,
-                        verbose=verbose, class_weight=class_weight)
+        # Train the model.
+        steps_per_epoch = ceil(train_generator.n / train_generator.batch_size)
+        val_steps = ceil(val_generator.n / val_generator.batch_size)
+        history = model.fit(train_generator, steps_per_epoch=steps_per_epoch, epochs=cfg['TRAIN']['EPOCHS'],
+                            validation_data=val_generator, validation_steps=val_steps, callbacks=callbacks,
+                            verbose=verbose, class_weight=class_weight)
 
-    # Save the model's weights
-    if save_weights:
-        model_path = cfg['PATHS']['MODEL_WEIGHTS'] + 'model' + datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + '.h5'
-        if cfg['TRAIN']['MODEL_DEF'] == 'cutoffvgg16':
-            save_model(model.model, model_path)
-        else:
-            save_model(model, model_path)  # Save the model's weights
+        # Save the model's weights
+        if save_weights:
+            model_path = cfg['PATHS']['MODEL_WEIGHTS'] + 'model' + datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + '.h5'
+            if cfg['TRAIN']['MODEL_DEF'] == 'cutoffvgg16':
+                save_model(model.model, model_path)
+            else:
+ 
+                save_model(model, model_path)  # Save the model's weights
 
-    # Run the model on the test set and print the resulting performance metrics.
-    test_results = model.evaluate(test_generator, verbose=1)
-    test_metrics = {}
-    test_summary_str = [['**Metric**', '**Value**']]
-    for metric, value in zip(model.metrics_names, test_results):
-        test_metrics[metric] = value
-        test_summary_str.append([metric, str(value)])
-    if log_dir is not None:
-        log_test_results(model, test_generator, test_metrics, log_dir)
-    return model, test_metrics, test_generator
+        # Run the model on the test set and print the resulting performance metrics.
+        test_results = model.evaluate(test_generator, verbose=1)
+        test_metrics = {}
+        test_summary_str = [['**Metric**', '**Value**']]
+        for metric, value in zip(model.metrics_names, test_results):
+            test_metrics[metric] = value
+            test_summary_str.append([metric, str(value)])
+        if log_dir is not None:
+            log_test_results(model, test_generator, test_metrics, log_dir)
+        return model, test_metrics, test_generator
 
 
 def train_single(hparams=None, save_weights=False, write_logs=False):
