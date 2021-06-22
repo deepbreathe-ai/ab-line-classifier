@@ -1,19 +1,20 @@
 PATHS:
-  CLIPS_TABLE: 'data/clips_by_patient_cropped.csv'
-  FRAME_TABLE: 'data/frames_cropped.csv'   # Path to all LUS frames in the dataset
-  DATABASE_QUERY: 'data/parenchymal_clips.csv'
-  RAW_CLIPS: 'data/raw_clips/'
-  FRAMES: 'B:/Datasets/ab-frames-cropped'
+  CLIPS_TABLE: 'data/clips_by_patient_ext.csv'
+  FRAME_TABLE: 'data/frames_ext.csv'   # Path to all LUS frames in the dataset
+  DATABASE_QUERY: 'data/external_clips.csv'
+  RAW_CLIPS: 'data/raw_clips_ext/'
+  MASKED_CLIPS: 'data/masked_clips_ext/'
+  FRAMES: 'data/frames_ext/'
   PARTITIONS: 'data/partitions/'
   TEST_DF: 'data/partitions/test_set_final.csv'
-  EXT_VAL_CLIPS_TABLE: 'data/clips_by_patient_mini.csv'
-  EXT_VAL_FRAME_TABLE: 'data/frames_mini.csv'
-  EXT_VAL_FRAMES: 'data/frames_mini/'
-  HEATMAPS: 'img/heatmaps'
+  EXT_VAL_CLIPS_TABLE: 'data/clips_by_patient_ext.csv'
+  EXT_VAL_FRAME_TABLE: 'data/frames_ext.csv'
+  EXT_VAL_FRAMES: 'data/frames_ext/'
+  HEATMAPS: 'img/heatmaps/model20210615-023802.h5-ext'
   LOGS: 'results/logs/'
   IMAGES: 'results/figures/'
   MODEL_WEIGHTS: 'results/models/'
-  MODEL_TO_LOAD: 'results/models/model20210603-164339.h5'
+  MODEL_TO_LOAD: 'results/models/model20210615-023802.h5'
   CLASS_NAME_MAP: 'data/serializations/output_class_indices.pkl'
   BATCH_PREDS: 'results/predictions/'
   METRICS: './results/metrics/'
@@ -24,7 +25,7 @@ DATA:
   IMG_DIM: [128, 128]
   VAL_SPLIT: 0.1
   TEST_SPLIT: 0.1
-  CLASSES: ['a-lines', 'b-lines']   # Classes for binary classification
+  CLASSES: ['a_lines', 'b_lines']   # Classes for binary classification
 
 TRAIN:
   MODEL_DEF: 'cutoffvgg16'   # One of {'vgg16', 'mobilenetv2', 'xception', 'efficientnetb7', 'custom_resnetv2', 'cutoffvgg16'}

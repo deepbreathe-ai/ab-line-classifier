@@ -15,8 +15,11 @@ def create_ABline_dataframe(database_query):
     '''
     df = pd.read_csv(database_query)
 
+    # Remove pleural views
+    df = df[df.view != 'pleural']
+
     # Remove all muggle clips
-    df = df[df.frame_homogeneity.isnull()]
+    df = df[df.frame_homogeneity == 0]
 
     # Remove Non-A/Non-B line clips
     df = df[df.a_or_b_lines != 'non_a_non_b']
@@ -25,7 +28,7 @@ def create_ABline_dataframe(database_query):
     df = df[df.a_or_b_lines.notnull()]
 
     # Create filename
-    df['filename'] = df['exam_id'] + "_" + df['patient_id'] + "_" + df["vid_id"]
+    df['filename'] = df["vid_id"]
 
     # Create column of class category to each clip. 
     # Modifiable for binary or multi-class labelling

@@ -18,6 +18,9 @@ cfg = yaml.full_load(open(os.getcwd() + "/config.yml", 'r'))
 
 for device in tf.config.experimental.list_physical_devices("GPU"):
     tf.config.experimental.set_memory_growth(device, True)
+    tf.config.experimental.set_virtual_device_configuration(device, [
+        tf.config.experimental.VirtualDeviceConfiguration(memory_limit=9216)])
+
 
 def get_preprocessing_function(model_type):
     '''
@@ -34,7 +37,7 @@ def get_preprocessing_function(model_type):
     elif model_type == 'inceptionresnetv2':
         return inceptionresnetv2_preprocess
     elif model_type == 'cutoffvgg16':
-        return xception_preprocess
+        return vgg16_preprocess
     else:
         return None
 
@@ -64,7 +67,7 @@ def predict_set(model, preprocessing_func, predict_df):
     x_col = 'Frame Path'
     y_col = 'Class Name'
     class_mode = 'categorical'
-    generator = img_gen.flow_from_dataframe(dataframe=predict_df, directory=cfg['PATHS']['FRAMES'],
+    generator = img_gen.flow_from_dataframe(dataframe=predict_df, directory=cfg['PATHS']['EXT_VAL_FRAMES'],
                                             x_col=x_col, y_col=y_col, target_size=img_shape,
                                             batch_size=cfg['TRAIN']['BATCH_SIZE'],
                                             class_mode=class_mode, validate_filenames=True, shuffle=False)
@@ -198,5 +201,5 @@ if __name__ == '__main__':
     cfg = yaml.full_load(open(os.getcwd() + "/config.yml", 'r'))
     dataset_path = cfg['PATHS']['EXT_VAL_FRAME_TABLE']
     encounters_path = cfg['PATHS']['EXT_VAL_CLIPS_TABLE']
-    compute_metrics_by_encounter(cfg, dataset_path, encounters_path)
+    #compute_metrics_by_encounter(cfg, dataset_path, encounters_path)
     compute_metrics_by_frame(cfg, dataset_path)
