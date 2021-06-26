@@ -4,7 +4,7 @@ import pandas as pd
 
 cfg = yaml.full_load(open(os.getcwd() + "/config.yml", 'r'))
 
-COLUMNS_WANTED = ['patient_id', 'a_or_b_lines']
+COLUMNS_WANTED = ['patient_id', 'a_or_b_lines', 'view', 'frame_homogeneity']
 
 database_query = cfg['PATHS']['DATABASE_QUERY']
 
@@ -15,11 +15,14 @@ def create_ABline_dataframe(database_query):
     '''
     df = pd.read_csv(database_query)
 
-    # Remove all muggle clips
-    df = df[df.frame_homogeneity.isnull()]
+    # Take all parenchymal clips
+    df = df[df.view == 'parenchymal']
 
-    # Remove Non-A/Non-B line clips
-    df = df[df.a_or_b_lines != 'non_a_non_b']
+    # Take all muggle clips
+    #df = df[df.frame_homogeneity == 1]
+
+    # Take all pathological B-lines
+    df = df[(df.a_or_b_lines == 'b_lines-_moderate_(<50%_pleural_line)') | (df.a_or_b_lines == 'b_lines-_severe_(>50%_pleural_line)')]
 
     # Removes clips with unlabelled parenchymal findings
     df = df[df.a_or_b_lines.notnull()]
@@ -41,10 +44,10 @@ def create_ABline_dataframe(database_query):
 
     df['Path'] = df.apply(lambda row: cfg['PATHS']['MASKED_CLIPS'] + row.filename, axis=1)
 
-    df['s3_path'] = df.apply(lambda row: row.s3_path, axis=1)
+    #df['s3_path'] = df.apply(lambda row: row.s3_path, axis=1)
     
     # Finalize dataframe
-    df = df[['filename'] + COLUMNS_WANTED + ['class'] + ['Path'] + ['s3_path']]
+    #df = df[['filename'] + COLUMNS_WANTED + ['class'] + ['Path'] + ['s3_path']]
 
     # Save df - append this csv to the previous csv 'clips_by_patient_2.csv'
     df.to_csv(cfg['PATHS']['CLIPS_TABLE'], index=False)

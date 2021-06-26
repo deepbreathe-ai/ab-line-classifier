@@ -34,7 +34,7 @@ def get_preprocessing_function(model_type):
     elif model_type == 'inceptionresnetv2':
         return inceptionresnetv2_preprocess
     elif model_type == 'cutoffvgg16':
-        return xception_preprocess
+        return vgg16_preprocess
     else:
         return None
 
@@ -64,7 +64,7 @@ def predict_set(model, preprocessing_func, predict_df):
     x_col = 'Frame Path'
     y_col = 'Class Name'
     class_mode = 'categorical'
-    generator = img_gen.flow_from_dataframe(dataframe=predict_df, directory=cfg['PATHS']['EXT_VAL_FRAMES'],
+    generator = img_gen.flow_from_dataframe(dataframe=predict_df, directory=cfg['PATHS']['FRAMES'],
                                             x_col=x_col, y_col=y_col, target_size=img_shape,
                                             batch_size=cfg['TRAIN']['BATCH_SIZE'],
                                             class_mode=class_mode, validate_filenames=True, shuffle=False)
@@ -182,8 +182,8 @@ def compute_metrics_by_frame(cfg, dataset_files_path):
     pred_classes, pred_probs = predict_set(model, preprocessing_fn, files_df)
 
     # Compute and save metrics
-    metrics = compute_metrics(cfg, np.array(frame_labels), np.array(pred_classes), pred_probs)
-    doc = json.dump(metrics, open(cfg['PATHS']['METRICS'] + 'frames_' + set_name + '.json', 'w'))
+    #metrics = compute_metrics(cfg, np.array(frame_labels), np.array(pred_classes), pred_probs)
+    #doc = json.dump(metrics, open(cfg['PATHS']['METRICS'] + 'frames_' + set_name + '.json', 'w'))
 
     # Save predictions
     pred_probs_df = pd.DataFrame(pred_probs, columns=cfg['DATA']['CLASSES'])
@@ -196,7 +196,7 @@ def compute_metrics_by_frame(cfg, dataset_files_path):
 
 if __name__ == '__main__':
     cfg = yaml.full_load(open(os.getcwd() + "/config.yml", 'r'))
-    dataset_path = cfg['PATHS']['EXT_VAL_FRAME_TABLE']
-    encounters_path = cfg['PATHS']['EXT_VAL_CLIPS_TABLE']
-    compute_metrics_by_encounter(cfg, dataset_path, encounters_path)
+    dataset_path = cfg['PATHS']['FRAME_TABLE']
+    encounters_path = cfg['PATHS']['CLIPS_TABLE']
+    #compute_metrics_by_encounter(cfg, dataset_path, encounters_path)
     compute_metrics_by_frame(cfg, dataset_path)
