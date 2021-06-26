@@ -19,10 +19,10 @@ def create_ABline_dataframe(database_query):
     df = df[df.view == 'parenchymal']
 
     # Take all muggle clips
-    #df = df[df.frame_homogeneity == 1]
+    #df = df[df.frame_homogeneity.isnull()]
 
     # Take all pathological B-lines
-    df = df[(df.a_or_b_lines == 'b_lines-_moderate_(<50%_pleural_line)') | (df.a_or_b_lines == 'b_lines-_severe_(>50%_pleural_line)')]
+    df = df[df.a_or_b_lines != 'non_a_non_b']
 
     # Removes clips with unlabelled parenchymal findings
     df = df[df.a_or_b_lines.notnull()]
@@ -30,14 +30,15 @@ def create_ABline_dataframe(database_query):
     # Create filename
     df['filename'] = df['exam_id'] + "_" + df['patient_id'] + "_" + df["vid_id"]
 
-    # Create column of class category to each clip. 
+    # Create column of class category to each clip.
     # Modifiable for binary or multi-class labelling
     df['class'] = df.apply(lambda row: 0 if row.a_or_b_lines == 'a_lines' else
                            (1 if row.a_or_b_lines == 'b_lines_<_3' else
                             (1 if row.a_or_b_lines == 'b_lines-_moderate_(<50%_pleural_line)' else
                              (1 if row.a_or_b_lines == 'b_lines-_severe_(>50%_pleural_line)' else
-                               2 if row.a_or_b_lines == 'non_a_non_b' else
-                                -1))), axis=1)
+                              (1 if row.a_or_b_lines == 'b_lines' else
+                               (2 if row.a_or_b_lines == 'non_a_non_b' else
+                                -1))))), axis=1)
 
     # Relabel all b-line severities as a single class for A- vs. B-line classifier
     df['a_or_b_lines'] = df['a_or_b_lines'].replace({'b_lines_<_3': 'b_lines', 'b_lines-_moderate_(<50%_pleural_line)': 'b_lines', 'b_lines-_severe_(>50%_pleural_line)': 'b_lines'})
