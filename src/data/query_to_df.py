@@ -21,8 +21,9 @@ def create_ABline_dataframe(database_query):
     # Take all muggle clips
     #df = df[df.frame_homogeneity.isnull()]
 
-    # Take all pathological B-lines
+    # Take all pathological B-lines and A-lines
     df = df[df.a_or_b_lines != 'non_a_non_b']
+    df = df[df.a_or_b_lines != 'b_lines_<_3']
 
     # Removes clips with unlabelled parenchymal findings
     df = df[df.a_or_b_lines.notnull()]
