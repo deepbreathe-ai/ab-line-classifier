@@ -22,7 +22,7 @@ def mp4_to_images(mp4_path):
     '''
     vc = cv2.VideoCapture(mp4_path)
     vid_dir, mp4_filename = os.path.split(mp4_path)      # Get folder and filename of mp4 file respectively
-    mp4_filename = mp4_filename.split('.')[0]       # Strip file extension
+    mp4_filename = mp4_filename.rsplit('.', 1)[0]       # Strip file extension
 
     idx = 0
     max_area = 0
