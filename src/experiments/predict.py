@@ -198,5 +198,5 @@ if __name__ == '__main__':
     cfg = yaml.full_load(open(os.getcwd() + "/config.yml", 'r'))
     dataset_path = cfg['PATHS']['FRAME_TABLE']
     encounters_path = cfg['PATHS']['CLIPS_TABLE']
-    compute_metrics_by_encounter(cfg, dataset_path, encounters_path)
+    #compute_metrics_by_encounter(cfg, dataset_path, encounters_path)
     compute_metrics_by_frame(cfg, dataset_path)

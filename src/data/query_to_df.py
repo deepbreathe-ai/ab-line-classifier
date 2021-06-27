@@ -23,19 +23,20 @@ def create_ABline_dataframe(database_query):
 
     # Take all pathological B-lines and A-lines
     df = df[df.a_or_b_lines != 'non_a_non_b']
-    df = df[df.a_or_b_lines != 'b_lines_<_3']
 
     # Removes clips with unlabelled parenchymal findings
     df = df[df.a_or_b_lines.notnull()]
 
-    # Create filename
+    # Create filename for internal data
     #df['filename'] = df['exam_id'] + "_" + df['patient_id'] + "_" + df["vid_id"]
+
+    # Create filename for internal data
     df['filename'] = df["vid_id"]
 
     # Create column of class category to each clip.
     # Modifiable for binary or multi-class labelling
     df['class'] = df.apply(lambda row: 0 if row.a_or_b_lines == 'a_lines' else
-                           (1 if row.a_or_b_lines == 'b_lines_<_3' else
+                           (0 if row.a_or_b_lines == 'b_lines_<_3' else
                             (1 if row.a_or_b_lines == 'b_lines-_moderate_(<50%_pleural_line)' else
                              (1 if row.a_or_b_lines == 'b_lines-_severe_(>50%_pleural_line)' else
                               (1 if row.a_or_b_lines == 'b_lines' else
@@ -43,8 +44,12 @@ def create_ABline_dataframe(database_query):
                                 -1))))), axis=1)
 
     # Relabel all b-line severities as a single class for A- vs. B-line classifier
-    df['a_or_b_lines'] = df['a_or_b_lines'].replace({'b_lines_<_3': 'b_lines', 'b_lines-_moderate_(<50%_pleural_line)': 'b_lines', 'b_lines-_severe_(>50%_pleural_line)': 'b_lines'})
+    df['a_or_b_lines'] = df['a_or_b_lines'].replace({'b_lines-_moderate_(<50%_pleural_line)': 'b_lines', 'b_lines-_severe_(>50%_pleural_line)': 'b_lines'})
 
+    # Relabel mild B-line as A-line (for pathological vs. non-pathological contiguity index experiment)
+    df['a_or_b_lines'] = df['a_or_b_lines'].replace({'b_lines_<_3': 'a_lines'})
+
+    # Create path to eventual masked clips
     df['Path'] = df.apply(lambda row: cfg['PATHS']['MASKED_CLIPS'] + row.filename, axis=1)
 
     #df['s3_path'] = df.apply(lambda row: row.s3_path, axis=1)
