@@ -1,10 +1,10 @@
 PATHS:
-  CLIPS_TABLE: 'data/external_data/muggle_thresholding/clips_by_patient_external_a_b.csv'
-  FRAME_TABLE: 'data/external_data/muggle_thresholding/frames_external_a_b.csv'   # Path to all LUS frames in the dataset
+  CLIPS_TABLE: 'data/external_data/clips_by_patient_ext.csv'
+  FRAME_TABLE: 'data/external_data/frames_ext.csv'   # Path to all LUS frames in the dataset
   DATABASE_QUERY: 'data/external_data/external_clips.csv'
-  RAW_CLIPS: 'data/external_data/muggle_thresholding/raw_clips_external_a_b/'
-  MASKED_CLIPS: 'data/external_data/muggle_thresholding/masked_clips_external_a_b/'
-  FRAMES: 'data/external_data/muggle_thresholding/frames_external_a_b/'
+  RAW_CLIPS: 'data/external_data/raw_clips_ext/'
+  MASKED_CLIPS: 'data/external_data/masked_clips_ext/'
+  FRAMES: 'data/external_data/frames_ext/'
   PARTITIONS: 'data/partitions/'
   TEST_DF: 'data/partitions/test_set.csv'
   EXT_VAL_CLIPS_TABLE: 'data/clips_by_patient_mini.csv'

@@ -182,8 +182,8 @@ def compute_metrics_by_frame(cfg, dataset_files_path):
     pred_classes, pred_probs = predict_set(model, preprocessing_fn, files_df)
 
     # Compute and save metrics
-    #metrics = compute_metrics(cfg, np.array(frame_labels), np.array(pred_classes), pred_probs)
-    #doc = json.dump(metrics, open(cfg['PATHS']['METRICS'] + 'frames_' + set_name + '.json', 'w'))
+    metrics = compute_metrics(cfg, np.array(frame_labels), np.array(pred_classes), pred_probs)
+    doc = json.dump(metrics, open(cfg['PATHS']['METRICS'] + 'frames_' + set_name + '.json', 'w'))
 
     # Save predictions
     pred_probs_df = pd.DataFrame(pred_probs, columns=cfg['DATA']['CLASSES'])
@@ -198,5 +198,5 @@ if __name__ == '__main__':
     cfg = yaml.full_load(open(os.getcwd() + "/config.yml", 'r'))
     dataset_path = cfg['PATHS']['FRAME_TABLE']
     encounters_path = cfg['PATHS']['CLIPS_TABLE']
-    #compute_metrics_by_encounter(cfg, dataset_path, encounters_path)
+    compute_metrics_by_encounter(cfg, dataset_path, encounters_path)
     compute_metrics_by_frame(cfg, dataset_path)
