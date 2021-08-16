@@ -4,6 +4,7 @@ import io
 import yaml
 import math
 import matplotlib.pyplot as plt
+from matplotlib import cycler
 import matplotlib as mpl
 import numpy as np
 import tensorflow as tf
@@ -12,7 +13,6 @@ from skopt.plots import plot_objective
 from pandas.api.types import is_numeric_dtype
 
 mpl.rcParams['figure.figsize'] = (12, 8)
-cfg = yaml.full_load(open(os.getcwd() + "/config.yml", 'r'))
 
 def plot_to_tensor():
     '''
@@ -139,13 +139,13 @@ def plot_confusion_matrix(labels, predictions, class_name_list, dir_path=None, t
     return plt
 
 
-def plot_bayesian_hparam_opt(model_name, hparam_names, search_results, save_fig=False):
+def plot_bayesian_hparam_opt(model_name, hparam_names, search_results, im_path=None):
     '''
     Plot all 2D hyperparameter comparisons from the logs of a Bayesian hyperparameter optimization.
     :param model_name: Name of the model
     :param hparam_names: List of hyperparameter identifiers
     :param search_results: The object resulting from a Bayesian hyperparameter optimization with the skopt package
-    :param save_fig:
+    :param im_path: Path at which to save image
     :return:
     '''
 
@@ -173,26 +173,33 @@ def plot_bayesian_hparam_opt(model_name, hparam_names, search_results, save_fig=
     fig.text(0.65, 0.8, hparam_names_text, fontsize=10, color='darkblue')
 
     fig.tight_layout()
-    if save_fig:
-        plt.savefig(cfg['PATHS']['EXPERIMENT_VISUALIZATIONS'] + 'Bayesian_opt_' + model_name + '_' +
-                    datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + '.png')
+    if im_path:
+        plt.savefig(im_path)
 
 
-def plot_b_line_threshold_experiment(metrics_df, min_threshold, max_threshold, thresh_col, class_thresh, metrics_to_plot=None):
+def plot_b_line_threshold_experiment(metrics_df, min_threshold, max_threshold, thresh_col, metrics_to_plot=None,
+                                     ax=None, im_path=None, title=None, x_label=None):
     '''
     Visualizes the Plot classification metrics for clip predictions over various B-line count thresholds.
-    :param metrics_df: DataFrame containing classification metrics for different . The first column should be the
+    :param metrics_df: DataFrame containing classification metrics for different. The first column should be the
                        various B-line thresholds and the rest are classification metrics
-    :param min_threshold: Minimum B-line threshold
-    :param max_threshold: Maximum B-line threshold
+    :min_threshold: Minimum B-line threshold
+    :max_threshold: Maximum B-line threshold
     :thresh_col: Column of DataFrame corresponding to threshold variable
     :class_thresh: Classification threshold
-    :param metrics_to_plot: List of metrics to include on the plot
+    :metrics_to_plot: List of metrics to include on the plot
+    :ax: Matplotlib subplot
+    :im_path: Path in which to save image
+    :title: Plot title
+    :x_label: X-label for plot
     '''
 
-    ax = plt.subplot()
-    plt.title('Classification Metrics for Clip Predictions vs. ' + thresh_col + ' (classification threshold = ' + str(class_thresh) + ')')
-    ax.set_xlabel(thresh_col)
+    if ax is None:
+        ax = plt.subplot()
+    if title:
+        plt.title(title)
+    if x_label:
+        ax.set_xlabel(thresh_col)
     ax.set_ylim(0., 1.)
 
     if metrics_to_plot is None:
@@ -206,27 +213,31 @@ def plot_b_line_threshold_experiment(metrics_df, min_threshold, max_threshold, t
             ax.plot(metrics_df[thresh_col], metrics_df[metric_name])
 
     # Change axis ticks and add grid
-    ax.minorticks_on()
+    #ax.minorticks_on()
+    # for tick in ax.get_xticklabels():
+    #     tick.set_color('gray')
+    # for tick in ax.get_yticklabels():
+    #     tick.set_color('gray')
     ax.set_xlim(min_threshold - 1, max_threshold + 1)
     ax.xaxis.set_ticks(np.arange(0, max_threshold + 1, 5))
-    ax.yaxis.set_ticks(np.arange(0., 1.01, 0.05))
-    ax.grid(True, which='both', color='lightgrey')
+    ax.yaxis.set_ticks(np.arange(0., 1.01, 0.1))
+    # ax.grid(True, which='both', color='lightgrey')
 
     # Draw legend
     ax.legend(metric_names, loc='lower right')
 
-    plt.savefig(cfg['PATHS']['EXPERIMENT_VISUALIZATIONS'] + thresh_col +
-                datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + '.png')
+    if im_path:
+        plt.savefig(im_path)
+    return ax
 
 
-def plot_b_line_threshold_roc_curve(tprs, fprs):
+def plot_b_line_threshold_roc_curve(tprs, fprs, im_path=None):
     '''
     Plot ROC curve and determine AUC, given a list of true positive and false positive rates at a variety of thresholds.
     :param tprs: List of true positive rates
     :param fprs: List of false positive rates
+    :param im_path: Path at which to save image
     '''
-    print(fprs)
-    print(tprs)
     plt.clf()
     ax = plt.subplot()
     ax.plot(fprs, tprs, linewidth=3)  # Plot the ROC curve
@@ -243,5 +254,5 @@ def plot_b_line_threshold_roc_curve(tprs, fprs):
     AUC = auc(fprs, tprs)
     plt.title("ROC for Varying B-line Thresholds (AUC={:.5f})".format(AUC))
 
-    plt.savefig(cfg['PATHS']['EXPERIMENT_VISUALIZATIONS'] + 'roc_ct_' +
-                datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + '.png')
+    if im_path:
+        plt.savefig(im_path)

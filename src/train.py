@@ -440,7 +440,9 @@ def bayesian_hparam_optimization():
     results_path = cfg['PATHS']['EXPERIMENTS'] + 'hparam_search_' + model_name + \
                    datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + '.csv'
     results_df.to_csv(results_path, index_label=False, index=False)
-    plot_bayesian_hparam_opt(model_name, hparam_names, search_results, save_fig=True)
+    im_path = cfg['PATHS']['EXPERIMENT_VISUALIZATIONS'] + 'Bayesian_opt_' + model_name + '_' + \
+              datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + '.png'
+    plot_bayesian_hparam_opt(model_name, hparam_names, search_results, im_path=im_path)
     return search_results
 
 
