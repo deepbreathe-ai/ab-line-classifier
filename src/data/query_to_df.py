@@ -4,8 +4,6 @@ import pandas as pd
 
 cfg = yaml.full_load(open(os.getcwd() + "/config.yml", 'r'))
 
-COLUMNS_WANTED = ['patient_id', 'a_or_b_lines', 'view', 'frame_homogeneity']
-
 database_query = cfg['PATHS']['DATABASE_QUERY']
 
 def create_ABline_dataframe(database_query):
@@ -19,7 +17,7 @@ def create_ABline_dataframe(database_query):
     df = df[df.view == 'parenchymal']
 
     # Remove all muggle clips
-    df = df[df.frame_homogeneity == 0]
+    df = df[df.frame_homogeneity.isnull()]
 
     # Remove Non-A/Non-B line clips
     df = df[df.a_or_b_lines != 'non_a__non_b']
