@@ -6,6 +6,16 @@ cfg = yaml.full_load(open(os.getcwd() + "/config.yml", 'r'))
 
 database_query = cfg['PATHS']['DATABASE_QUERY']
 
+# Create folders containing raw clips, masked clips, and frames
+if not os.path.exists(cfg['PATHS']['RAW_CLIPS']):
+    os.makedirs(cfg['PATHS']['RAW_CLIPS'])
+
+if not os.path.exists(cfg['PATHS']['MASKED_CLIPS']):
+    os.makedirs(cfg['PATHS']['MASKED_CLIPS'])
+
+if not os.path.exists(cfg['PATHS']['FRAMES']):
+    os.makedirs(cfg['PATHS']['FRAMES'])
+
 def create_ABline_dataframe(database_query):
     '''
     Extracts out pertinent information from database query csv and builds a dataframe linking filenames, patients, and class
