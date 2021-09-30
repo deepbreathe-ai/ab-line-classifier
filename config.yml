@@ -1,9 +1,10 @@
 PATHS:
-  CLIPS_TABLE: 'data/clips_by_patient.csv'
-  FRAME_TABLE: 'data/frames.csv'   # Path to all LUS frames in the dataset
-  DATABASE_QUERY: 'data/parenchymal_clips.csv'
-  RAW_CLIPS: 'data/raw_clips/'
-  FRAMES: 'B:/Datasets/ab-frames'
+  CLIPS_TABLE: 'data/view_classifier/clips_by_patient_hackathon.csv'
+  FRAME_TABLE: 'data/view_classifier/frames.csv'   # Path to all LUS frames in the dataset
+  DATABASE_QUERY: 'data/view_classifier/london_all_clips.csv'
+  RAW_CLIPS: 'data/view_classifier/raw_clips/'
+  MASKED_CLIPS: 'data/view_classifier/masked_clips/'
+  FRAMES: 'data/view_classifier/frames'
   PARTITIONS: 'data/partitions/'
   TEST_DF: 'data/partitions/test_set.csv'
   EXT_VAL_CLIPS_TABLE: 'data/clips_by_patient_mini.csv'
@@ -24,15 +25,15 @@ DATA:
   IMG_DIM: [112, 112]
   VAL_SPLIT: 0.1
   TEST_SPLIT: 0.1
-  CLASSES: ['a-lines', 'b-lines']   # Classes for binary classification
+  CLASSES: ['parenchymal', 'pleural']   # Classes for binary classification
 
 TRAIN:
   MODEL_DEF: 'cutoffvgg16'   # One of {'vgg16', 'mobilenetv2', 'xception', 'efficientnetb7', 'custom_resnetv2', 'cutoffvgg16'}
-  EXPERIMENT_TYPE: 'cross_validation'               # One of {'single_train', 'cross_validation', 'hparam_search'}
+  EXPERIMENT_TYPE: 'single_train'               # One of {'single_train', 'cross_validation', 'hparam_search'}
   N_CLASSES: 2
   BATCH_SIZE: 64
   EPOCHS: 200
-  PATIENCE: 10
+  PATIENCE: 5
   METRIC_PREFERENCE: ['auc', 'recall', 'precision', 'loss']
   NUM_GPUS: 1
   MIXED_PRECISION: false                         # Necessary for training with Tensor Cores
