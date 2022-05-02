@@ -58,7 +58,6 @@ def create_image_dataset(query_df_path):
     all_clips_df.to_csv(cfg['PATHS']['FRAME_TABLE'], index=False)
     return
 
-
 if __name__=='__main__':
     create_image_dataset(cfg['PATHS']['CLIPS_TABLE'])
 
