@@ -1,13 +1,6 @@
 import pandas as pd
-import os
-import yaml
 import dill
-import datetime
-import numpy as np
 from math import ceil
-import sys
-import tensorflow as tf
-from tensorflow.keras.initializers import Constant
 from sklearn.model_selection import train_test_split, KFold
 from skopt import gp_minimize
 from skopt.space import Real, Categorical, Integer
@@ -16,8 +9,7 @@ from tensorflow_addons.metrics import F1Score
 from tensorflow.keras.models import save_model
 from tensorflow.keras.callbacks import EarlyStopping, TensorBoard, ReduceLROnPlateau
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from tensorflow.keras.initializers import Constant
-from src.models.models import *
+from src.detection.models.models import *
 from src.visualization.visualization import *
 import gc
 from tensorflow.keras import backend as k
