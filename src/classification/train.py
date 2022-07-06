@@ -9,7 +9,7 @@ from tensorflow_addons.metrics import F1Score
 from tensorflow.keras.models import save_model
 from tensorflow.keras.callbacks import EarlyStopping, TensorBoard, ReduceLROnPlateau
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from src.detection.models.models import *
+from src.classification.models.models import *
 from src.visualization.visualization import *
 import gc
 from tensorflow.keras import backend as k

@@ -22,6 +22,7 @@ PATHS:
   EXPERIMENT_VISUALIZATIONS: './img/experiments/'
   RT_ROOT_DIR: 'data/WB-Prospective-Data-Trimmed/'
   RT_LABELBOX_ANNOTATIONS: 'data/processed_labelbox_phase1.csv'
+  BACKBONE_MODEL: 'results/models/cutoffvgg16_final_cropped.h5'
 
 DATA:
   IMG_DIM: [128, 128]
@@ -31,7 +32,7 @@ DATA:
   RT_B_LINES_3_CLASS: 'b_lines'
 
 TRAIN:
-  MODEL_DEF: 'cutoffvgg16'   # One of {'vgg16', 'mobilenetv2', 'xception', 'efficientnetb7', 'custom_resnetv2', 'cutoffvgg16'}
+  MODEL_DEF: 'ssd_cutoffvgg16'   # One of {'vgg16', 'mobilenetv2', 'xception', 'efficientnetb7', 'custom_resnetv2', 'cutoffvgg16'}
   EXPERIMENT_TYPE: 'single_train'               # One of {'single_train', 'cross_validation', 'hparam_search'}
   N_CLASSES: 2
   BATCH_SIZE: 256
@@ -115,7 +116,42 @@ HPARAMS:
     CUTOFF_LAYER: 10
     FINETUNE_LAYER: 7
     EXTRACT_EPOCHS: 6
-
+  SSD_CUTOFFVGG16:
+    LR_EXTRACT: 0.0003
+    LR_FINETUNE: 0.0000093
+    DROPOUT: 0.45
+    CUTOFF_LAYER: 10
+    FINETUNE_LAYER: 7
+    EXTRACT_EPOCHS: 6
+    EXTRA_BOX_FOR_AR1: False
+    MIN_SCALE: 0.2
+    MAX_SCALE: 0.9
+    VARIANCES: [0.1, 0.1, 0.2, 0.2]
+    PREDICTION_LAYERS:
+      - name: cpm1_conv2
+        size: 64
+        offset: [0.5, 0.5]
+        aspect_ratios: [0.5, 1.0, 2.0]
+      - name: cpm2_conv3
+        size: 32
+        offset: [0.5, 0.5]
+        aspect_ratios: [0.5, 1.0, 2.0]
+      - name: cpm3_conv3
+        size: 16
+        offset: [0.5, 0.5]
+        aspect_ratios: [0.5, 1.0, 2.0]
+      - name: dpm_transpose1
+        size: 16
+        offset: [0.5, 0.5]
+        aspect_ratios: [0.5, 1.0, 2.0]
+      - name: dpm_transpose2
+        size: 32
+        offset: [0.5, 0.5]
+        aspect_ratios: [0.5, 1.0, 2.0]
+      - name: dpm_transpose3
+        size: 64
+        offset: [0.5, 0.5]
+        aspect_ratios: [0.5, 1.0, 2.0]
 HPARAM_SEARCH:
   MOBILENETV2:
     LR:

@@ -1,6 +1,6 @@
 import tensorflow as tf
 from tensorflow.keras.layers import Layer
-from src.detection.utils import ssd_utils
+from src.detection.utils.ssd_utils import decode_predictions
 
 
 class DecodeSSDPredictions(Layer):

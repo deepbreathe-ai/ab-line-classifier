@@ -37,12 +37,12 @@ _A deep learning solution for the classification of normal versus abnormal lung 
    the appropriate string representing the model type you wish to
    train. To train a model, ensure the _TRAIN >>
    EXPERIMENT_TYPE_ field is set to _'train_single'_.
-5. Execute [_train.py_](src/train.py) to train your chosen model on your
+5. Execute [_train.py_](src/classification/train.py) to train your chosen model on your
    preprocessed data. The trained model will be serialized within
    _results/models/_, and its filename will resemble the following
    structure: _model{yyyymmdd-hhmmss}.h5_, where _{yyyymmdd-hhmmss}_ is the current
    time.  
-   Note: When [_train.py_](src/train.py) is executed, the project root should be the working directory.
+   Note: When [_train.py_](src/classification/train.py) is executed, the project root should be the working directory.
 6. Navigate to _results/logs/_ to see the tensorboard log files. The folder name will
    be _{yyyymmdd-hhmmss}_.  These logs can be used to create a [tensorboard](https://www.tensorflow.org/tensorboard)
    visualization of the training results.
@@ -79,7 +79,7 @@ With a pre-processed clip dataset, you can train a frame classification model of
 3. Generate a frame dataset from the masked clips using [_build-dataset.py_](/src/data/build-dataset.py).
 4. Set the desired data and train configuration fields in [_config.yml_](config.yml) including setting a model type using the `MODEL_DEF` parameter and setting the `EXPERIMENT_TYPE` to _single_train_.
 5. Set the associated hyperparameter values based on the chosen model definition.
-6. Run [_train.py_](/src/train.py).
+6. Run [_train.py_](/src/classification/train.py).
 7. View all logs and trained weights in the [_results_](/results) directory.
 
 Note: We found that the _cutoffvgg16_ model definition had the best performance on our internal data.
@@ -93,7 +93,7 @@ With a pre-processed clip dataset, you can evaluate model performance using k-fo
 3. Set the desired data and train configuration fields in [_config.yml_](config.yml) including setting a model type using the `MODEL_DEF` parameter and setting the `EXPERIMENT_TYPE` to _cross_validation_.
 4. Set the number of folds in the train section of [_config.yml_](config.yml).
 5. Set the associated hyperparameter values based on the chosen model definition.
-6. Run [_train.py_](/src/train.py).
+6. Run [_train.py_](/src/classification/train.py).
 7. View all logs and trained weights in the [_results_](/results) directory. The partitions from each fold can be found in the [_partitions_](/src/results/data/partitions) folder.
 
 ### Hyper Parameter Optimization 
@@ -105,7 +105,7 @@ With a pre-processed clip dataset, you can perform a hyperparameter search to as
 3. Set the desired data and train configuration field in [_config.yml_](config.yml) including setting a model type using the `MODEL_DEF` parameter and setting the `EXPERIMENT_TYPE` to _hparam_search_.
 4. Set the hyperparameter search fields in the train section of [_config.yml_](config.yml).
 5. Set the associated hyperparameter search configuration values based on the chosen model definition.
-6. Run [_train.py_](/src/train.py).
+6. Run [_train.py_](/src/classification/train.py).
 7. View all logs in the [_logs_](/results/logs) folder and view bayesian hyperparameter search results in the [_experiments_](/results/experiments) folder.
 
 ### Predictions
@@ -117,7 +117,7 @@ With a trained model, you can compute frame predictions and clip predictions usi
    - **"contiguous"**: If the number of contiguous frames for which the frame's predicted B-line probability meets or exceeds the classification threshold is at least the contiguity threshold, classify the clip as "B-lines".
     - **"average"**: Compute the average prediction probabilities across the entire clip. If the B-line average probability meets or exceeds the classification threshold, classify the clip as "B-lines".
     - **"sliding_window"**: Take the clip's B-line probability as the greatest average B-line probability present in any contiguous set of frames as large as the sliding window.
-4. Execute [predict.py](/src/predict.py).
+4. Execute [predict.py](/src/classification/predict.py).
 5. Access the frame and corresponding clip predictions as CSV files, located in [results/predictions](/results/predictions/).
 
 ### Grad-CAM for Individual Frame Predictions
