@@ -12,7 +12,12 @@ def decode_predictions(
 ):
     '''
     Decode bounding box predictions
-    #TODO: Fill in documentation for this function and its parameters
+    :param y_pred: Model output tensor containing predictions
+    :param input_size: Tuple, input size of image
+    :param nms_max_output_size: Scalar integer representing max number of boxes retained after NMS
+    :param confidence_threshold: Model confidence threshold for designating box to target class
+    :param iou_threshold: Intersection over Union threshold for NMS
+    :param num_predictions: Scalar integer representing number of boxes (preds) to keep after top K filtering
     '''
 
     cx = y_pred[..., -12] * y_pred[..., -4] * y_pred[..., -6] + y_pred[..., -8]
@@ -33,10 +38,7 @@ def decode_predictions(
                         tf.expand_dims(xmax, axis=-1),
                         tf.expand_dims(ymax, axis=-1)], -1)
 
-    batch_size = tf.shape(y_pred)[0]  # dtype: tf.int32
-    num_boxes = tf.shape(y_pred)[1]
     num_classes = y_pred.shape[2] - 4
-    class_indices = tf.range(1, num_classes)
 
     # Iterate filter_predictions() over all batch items
     output_tensor = tf.nest.map_structure(tf.stop_gradient,

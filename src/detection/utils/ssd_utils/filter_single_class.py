@@ -9,7 +9,11 @@ def filter_single_class(batch_item,
                         iou_threshold):
     '''
     Filter predictions from SSD for one single class
-    #TODO: Fill in documentation
+    :param batch_item: Batch containing model output tensors
+    :param index: Index of class
+    :param nms_max_output_size: Scalar integer representing max number of boxes retained after NMS
+    :param confidence_threshold: Model confidence threshold for designating box to target class
+    :param iou_threshold: Intersection over Union threshold for NMS
     '''
     confidences = tf.expand_dims(batch_item[..., index], axis=-1)
     class_id = tf.fill(dims=tf.shape(confidences),

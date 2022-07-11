@@ -1,6 +1,3 @@
-import numpy as np
-
-
 def center_to_corner(boxes):
     '''
     Convert a set of bounding boxes from center format (cx, cy, width, height) to corner format (xmin, ymin, xmax, ymax)

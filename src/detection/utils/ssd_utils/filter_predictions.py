@@ -12,7 +12,12 @@ def filter_predictions(batch_item,
     '''
     Filter predictions for a given batch item by performing confidence thresholding non-maximum suppression,
     and top-k filtering.
-    # TODO: Fill in documentation
+    :param batch_item: Batch containing model output tensors
+    :param num_classes: Number of classes
+    :param nms_max_output_size: Scalar integer representing max number of boxes retained after NMS
+    :param confidence_threshold: Model confidence threshold for designating box to target class
+    :param iou_threshold: Intersection over Union threshold for NMS
+    :param num_predictions: Scalar integer representing number of boxes (preds) to keep after top K filtering
     '''
     filtered_single_classes = tf.nest.map_structure(tf.stop_gradient,
                                                     tf.map_fn(fn=lambda i: filter_single_class(batch_item,

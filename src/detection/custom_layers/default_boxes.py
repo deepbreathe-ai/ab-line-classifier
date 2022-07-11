@@ -8,8 +8,6 @@ class DefaultBoxes(Layer):
     '''
     Custom TF layer to help generate default boxes for a given feature map.
     '''
-    # TODO: Document method parameters
-
     def __init__(self,
                  image_shape,
                  scale,
@@ -20,6 +18,17 @@ class DefaultBoxes(Layer):
                  clip_boxes=True,
                  offset=(0.5, 0.5),
                  **kwargs):
+        '''
+        Initialize DefaultBoxes layer.
+        :param image_shape: Tuple, input image shape
+        :param scale: Current scale of default boxes
+        :param next_scale: Next scale of default boxes
+        :param aspect_ratios: List of aspect ratios representing default boxes
+        :param variances: Variances (x, y, w, h) applied to generated priors
+        :param has_extra_box_for_ar_1: Boolean for determining presence of extra box for aspect ratio 1
+        :param clip_boxes: Boolean for determining whether to clip output default boxes
+        :param offset: Offset for center of default boxes in order: (offset_x, offset_y)
+        '''
         self.image_shape = image_shape
         self.scale = scale
         self.next_scale = next_scale
@@ -75,7 +84,7 @@ class DefaultBoxes(Layer):
 
         base_config = super(DefaultBoxes. self).get_config()
 
-        return dict(list(base_config.items()) + list(config.items()))
+        return dict(base_config, **config)
 
     @classmethod
     def from_config(cls, config):
