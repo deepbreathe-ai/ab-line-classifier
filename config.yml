@@ -122,16 +122,19 @@ HPARAMS:
     DROPOUT: 0.45
     EPOCHS: 5
     FROZEN_LAYERS: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
-    EXTRA_BOX_FOR_AR1: False
-    MIN_SCALE: 0.2
-    MAX_SCALE: 0.9
-    VARIANCES: [0.1, 0.1, 0.2, 0.2]
-    PREDICTION_LAYERS:
+    EXTRA_BOX_FOR_AR1: False  # Boolean for adding 1 more anchor box for aspect ratio of 1.0; done in original SSD
+    MIN_SCALE: 0.2 # Float for object scale captured by anchor boxes in first prediction layer's feature maps
+    MAX_SCALE: 0.9 # Float for object scale captured by anchor boxes in last prediction layer's feature maps
+    VARIANCES: [0.1, 0.1, 0.2, 0.2]  # Float variances to add to bbox (x, y, w, h) preds
+    LOSS:
+      CROSS_ENTROPY_TYPE: 'binary'  # Type of cross-entropy for classification loss; one of {'binary', 'categorical'}
+      L1_SMOOTHING_POINT: 0.5  # Float representing smoothing point for square loss term in L1 loss calculation
+    PREDICTION_LAYERS:  # Anchor box values for CPM and DPM modules in network; the specified layers will produce preds
       - CPM:
         - name: cpm1_conv2
-          size: 64
-          offset: [0.5, 0.5]
-          aspect_ratios: [0.5, 1.0, 2.0]
+          size: 64  # Size of output feature map by current layer
+          offset: [0.5, 0.5]  # Initial offset in x, y for anchor box from GT bounding box's x, y
+          aspect_ratios: [0.5, 1.0, 2.0]  # Aspect ratios of anchor boxes for current layer; one for each anchor box
         - name: cpm2_conv3
           size: 32
           offset: [0.5, 0.5]
