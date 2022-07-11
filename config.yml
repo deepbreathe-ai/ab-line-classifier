@@ -120,38 +120,39 @@ HPARAMS:
     LR_EXTRACT: 0.0003
     LR_FINETUNE: 0.0000093
     DROPOUT: 0.45
-    CUTOFF_LAYER: 10
-    FINETUNE_LAYER: 7
-    EXTRACT_EPOCHS: 6
+    EPOCHS: 5
+    FROZEN_LAYERS: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
     EXTRA_BOX_FOR_AR1: False
     MIN_SCALE: 0.2
     MAX_SCALE: 0.9
     VARIANCES: [0.1, 0.1, 0.2, 0.2]
     PREDICTION_LAYERS:
-      - name: cpm1_conv2
-        size: 64
-        offset: [0.5, 0.5]
-        aspect_ratios: [0.5, 1.0, 2.0]
-      - name: cpm2_conv3
-        size: 32
-        offset: [0.5, 0.5]
-        aspect_ratios: [0.5, 1.0, 2.0]
-      - name: cpm3_conv3
-        size: 16
-        offset: [0.5, 0.5]
-        aspect_ratios: [0.5, 1.0, 2.0]
-      - name: dpm_transpose1
-        size: 16
-        offset: [0.5, 0.5]
-        aspect_ratios: [0.5, 1.0, 2.0]
-      - name: dpm_transpose2
-        size: 32
-        offset: [0.5, 0.5]
-        aspect_ratios: [0.5, 1.0, 2.0]
-      - name: dpm_transpose3
-        size: 64
-        offset: [0.5, 0.5]
-        aspect_ratios: [0.5, 1.0, 2.0]
+      - CPM:
+        - name: cpm1_conv2
+          size: 64
+          offset: [0.5, 0.5]
+          aspect_ratios: [0.5, 1.0, 2.0]
+        - name: cpm2_conv3
+          size: 32
+          offset: [0.5, 0.5]
+          aspect_ratios: [0.5, 1.0, 2.0]
+        - name: cpm3_conv3
+          size: 16
+          offset: [0.5, 0.5]
+          aspect_ratios: [0.5, 1.0, 2.0]
+      - DPM:
+        - name: dpm_transpose1
+          size: 16
+          offset: [0.5, 0.5]
+          aspect_ratios: [0.5, 1.0, 2.0]
+        - name: dpm_transpose2
+          size: 32
+          offset: [0.5, 0.5]
+          aspect_ratios: [0.5, 1.0, 2.0]
+        - name: dpm_transpose3
+          size: 64
+          offset: [0.5, 0.5]
+          aspect_ratios: [0.5, 1.0, 2.0]
 HPARAM_SEARCH:
   MOBILENETV2:
     LR:
