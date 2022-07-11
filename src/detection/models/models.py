@@ -1,24 +1,14 @@
+import os
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras import Model
-from tensorflow.keras.models import load_model
-from tensorflow.keras.layers import Dense, Dropout, Input, Activation, GlobalAveragePooling2D, Conv2D, MaxPool2D, \
-    Reshape, Concatenate, BatchNormalization, AveragePooling2D, Flatten, SpatialDropout2D, Conv2DTranspose
-from tensorflow.keras.regularizers import l2
-from tensorflow.keras.optimizers import Adam, RMSprop
-from tensorflow.keras.initializers import Constant
-from tensorflow.keras.applications.mobilenet_v2 import MobileNetV2
-from tensorflow.keras.applications.vgg16 import VGG16
-from tensorflow.keras.applications.xception import Xception
-from tensorflow.keras.applications import EfficientNetB7
-from tensorflow.keras.applications.mobilenet_v2 import preprocess_input as mobilenetv2_preprocess
-from tensorflow.keras.applications.vgg16 import preprocess_input as vgg16_preprocess
-from tensorflow.keras.applications.xception import preprocess_input as xception_preprocess
-from tensorflow.keras.applications.efficientnet import preprocess_input as efficientnet_preprocess
-from tensorflow.keras.applications.resnet_v2 import preprocess_input as resnetv2_preprocess
 import yaml
-import os
-from src.detection.custom_layers import DefaultBoxes, DecodeSSDPredictions
+from tensorflow.keras import Model
+from tensorflow.keras.applications.vgg16 import preprocess_input as vgg16_preprocess
+from tensorflow.keras.layers import Activation, Conv2D, MaxPool2D, \
+    Reshape, Concatenate, Conv2DTranspose
+from tensorflow.keras.models import load_model
+from tensorflow.keras.optimizers import Adam, RMSprop
+from src.detection.custom_layers import DefaultBoxes
 from src.detection.utils.ssd_utils import get_default_box_count
 
 cfg = yaml.full_load(open(os.getcwd() + "/config.yml", 'r'))
@@ -30,15 +20,12 @@ def get_model(model_name):
     :return: (TF model definition function, preprocessing function)
     '''
 
-    if model_name == 'vgg16':
-        model_def = vgg16
-        preprocessing_function = vgg16_preprocess
-    elif model_name == 'cutoffvgg16':
-        model_def = CutoffVGG16
-        preprocessing_function = vgg16_preprocess
-    else:
+    if model_name == 'ssd_cutoffvgg16':
         model_def = SSD_CutoffVGG16
         preprocessing_function = vgg16_preprocess
+    else:
+        raise Exception(f'Model definition: "{model_name}" not found')
+
     return model_def, preprocessing_function
 
 
@@ -58,9 +45,8 @@ class SSD_CutoffVGG16:
         self.lr_extract = model_config['LR_EXTRACT']
         self.lr_finetune = model_config['LR_FINETUNE']
         self.dropout = model_config['DROPOUT']
-        self.cutoff_layer = model_config['CUTOFF_LAYER']
-        self.finetune_layer = model_config['FINETUNE_LAYER']
-        self.extract_epochs = model_config['EXTRACT_EPOCHS']
+        self.epochs = model_config['EPOCHS']
+        self.frozen_layers = model_config['FROZEN_LAYERS']
         self.optimizer_extract = Adam(learning_rate=self.lr_extract)
         self.optimizer_finetune = RMSprop(learning_rate=self.lr_finetune)
         self.output_bias = output_bias
@@ -107,218 +93,114 @@ class SSD_CutoffVGG16:
                                          strides=(2, 2), name='dpm_transpose1')(cpm3_pool)
         dpm_transpose1 = dpm_transpose1 * cpm3_conv3  # Fuse with original feature map
 
-        # dpm_transpose2 = Conv2DTranspose(filters=256, kernel_size=(3, 3), padding='same',
-        #                                  strides=(2, 2),
-        #                                  kernel_initializer=tf.constant_initializer(cpm2_conv3.kernel[...].numpy()),
-        #                                  bias_initializer=tf.constant_initializer(cpm2_conv3.bias[...].numpy()))(
-        #     dpm_transpose1)
+        # The last two DPM layers can initialize off reshaped kernel weights of first two CPM blocks which come from
+        # the trained backbone.
+        cpm2_conv3_kernel = tf.constant_initializer(np.tile(cpm2_conv3.kernel[...].numpy(), (1, 1, 1, 2)))
         dpm_transpose2 = Conv2DTranspose(filters=256, kernel_size=(3, 3), padding='same',
-                                         strides=(2, 2), name='dpm_transpose2')(dpm_transpose1)
+                                         strides=(2, 2),
+                                         kernel_initializer=cpm2_conv3_kernel,
+                                         bias_initializer=tf.constant_initializer(cpm2_conv3.bias[...].numpy()),
+                                         name='dpm_transpose2')(dpm_transpose1)
         dpm_transpose2 = dpm_transpose2 * cpm2_conv3.output
 
-        # dpm_transpose3 = Conv2DTranspose(filters=128, kernel_size=(3, 3), padding='same',
-        #                                   strides=(2, 2),
-        #                                   kernel_initializer=tf.constant_initializer(cpm_1_conv_3.kernel[...].numpy()),
-        #                                   bias_initializer=tf.constant_initializer(cpm_1_conv_3.bias[...].numpy()))(dpm_transpose2)
+        cpm1_conv2_kernel = tf.constant_initializer(np.tile(cpm1_conv2.kernel[...].numpy(), (1, 1, 1, 2)))
         dpm_transpose3 = Conv2DTranspose(filters=128, kernel_size=(3, 3), padding='same',
-                                         strides=(2, 2), name='dpm_transpose3')(dpm_transpose2)
+                                         strides=(2, 2),
+                                         kernel_initializer=cpm1_conv2_kernel,
+                                         bias_initializer=tf.constant_initializer(cpm1_conv2.bias[...].numpy()),
+                                         name='dpm_transpose3')(dpm_transpose2)
         dpm_transpose3 = dpm_transpose3 * cpm1_conv2.output
 
         ssd_model = Model(inputs=self.base_model.input, outputs=dpm_transpose3)
 
         # Construct prediction layers (conf, loc, and default boxes)
-        scales = np.linspace(self.min_scale, self.max_scale, len(self.prediction_layers))
+        scales = [np.linspace(self.min_scale, self.max_scale, len(self.prediction_layers[0]['CPM'])),
+                  np.linspace(self.max_scale, self.min_scale, len(self.prediction_layers[1]['DPM']))]
         num_cls_with_bg = self.n_classes + 1
 
-        mbox_conf_layers = []
-        mbox_loc_layers = []
-        mbox_default_box_layers = []
+        mbox_conf_layers = [[] for _ in range(2)]
+        mbox_loc_layers = [[] for _ in range(2)]
+        mbox_default_box_layers = [[] for _ in range(2)]
 
-        for i, layer in enumerate(self.prediction_layers):
-            default_box_count = get_default_box_count(layer['aspect_ratios'],
-                                                      self.extra_box_for_ar1)
-            x = ssd_model.get_layer(layer['name']).output
-            layer_mbox_conf = Conv2D(filters=default_box_count * num_cls_with_bg,
-                                     kernel_size=(3, 3),
-                                     padding='same',  # Potentially add kernel init and regularizers
-                                     name=f"{layer['name']}_mbox_conf")(x)
-            layer_mbox_conf_reshape = Reshape((-1, num_cls_with_bg),
-                                              name=f"{layer['name']}_mbox_conf_reshape")(layer_mbox_conf)
+        for module in self.prediction_layers:
+            module_name = next(iter(module))
+            pred_set_idx = 0 if module_name == 'CPM' else 1  # Need to segregate since CPM and DPM have different losses
+            for i, layer in enumerate(module[module_name]):
+                default_box_count = get_default_box_count(layer['aspect_ratios'],
+                                                          self.extra_box_for_ar1)
+                x = ssd_model.get_layer(layer['name']).output
+                layer_mbox_conf = Conv2D(filters=default_box_count * num_cls_with_bg,
+                                         kernel_size=(3, 3),
+                                         padding='same',  # TODO: Potentially add kernel init and L2 regularizers
+                                         name=f"{layer['name']}_mbox_conf")(x)
+                layer_mbox_conf_reshape = Reshape((-1, num_cls_with_bg),
+                                                  name=f"{layer['name']}_mbox_conf_reshape")(layer_mbox_conf)
 
-            layer_mbox_loc = Conv2D(filters=default_box_count * 4,
-                                    kernel_size=(3, 3),
-                                    padding='same',
-                                    name=f"{layer['name']}_mbox_loc")(x)
-            layer_mbox_loc_reshape = Reshape((-1, 4),
-                                             name=f"{layer['name']}_mbox_loc_reshape")(layer_mbox_loc)
+                layer_mbox_loc = Conv2D(filters=default_box_count * 4,
+                                        kernel_size=(3, 3),
+                                        padding='same',
+                                        name=f"{layer['name']}_mbox_loc")(x)
+                layer_mbox_loc_reshape = Reshape((-1, 4),
+                                                 name=f"{layer['name']}_mbox_loc_reshape")(layer_mbox_loc)
 
-            layer_default_boxes = DefaultBoxes(image_shape=self.input_shape,
-                                               scale=scales[i],
-                                               next_scale=scales[i + 1] if i + 1 <= len(
-                                                   self.prediction_layers) - 1 else 1,
-                                               aspect_ratios=layer['aspect_ratios'],
-                                               variances=self.variances,
-                                               has_extra_box_for_ar_1=self.extra_box_for_ar1,
-                                               name=f"{layer['name']}_default_boxes")(x)
-            layer_default_boxes_reshape = Reshape((-1, 8),
-                                                  name=f"{layer['name']}_default_boxes_reshape")(layer_default_boxes)
+                # TODO: Forward refined default boxes from CPM to DPM
+                layer_default_boxes = DefaultBoxes(image_shape=self.input_shape,
+                                                   scale=scales[pred_set_idx][i],
+                                                   next_scale=scales[pred_set_idx][i + 1] if i + 1 <= len(
+                                                       module[module_name]) - 1 else 1,
+                                                   aspect_ratios=layer['aspect_ratios'],
+                                                   variances=self.variances,
+                                                   has_extra_box_for_ar_1=self.extra_box_for_ar1,
+                                                   name=f"{layer['name']}_default_boxes")(x)
+                layer_default_boxes_reshape = Reshape((-1, 8),
+                                                      name=f"{layer['name']}_default_boxes_reshape")(layer_default_boxes)
 
-            mbox_conf_layers.append(layer_mbox_conf_reshape)
-            mbox_loc_layers.append(layer_mbox_loc_reshape)
-            mbox_default_box_layers.append(layer_default_boxes_reshape)
+                mbox_conf_layers[pred_set_idx].append(layer_mbox_conf_reshape)
+                mbox_loc_layers[pred_set_idx].append(layer_mbox_loc_reshape)
+                mbox_default_box_layers[pred_set_idx].append(layer_default_boxes_reshape)
 
         # Concatenate class confidence predictions from different feature map layers
-        mbox_conf = Concatenate(axis=-2, name='mbox_conf')(mbox_conf_layers)
-        mbox_conf_softmax = Activation('softmax', name='mbox_conf_softmax')(mbox_conf)
+        mbox_conf = [Concatenate(axis=-2, name=f'{i}_mbox_conf')(mbox_conf_layers[i])
+                     for i in range(len(mbox_conf_layers))]
+        mbox_conf_softmax = [Activation('softmax', name=f'{i}_mbox_conf_softmax')(mbox_conf[i])
+                             for i in range(len(mbox_conf))]
+        mbox_conf_softmax = tf.stack(mbox_conf_softmax, axis=1)
 
         # Concatenate object location predictions from different feature map layers
-        mbox_loc = Concatenate(axis=-2, name='mbox_loc')(mbox_loc_layers)
+        mbox_loc = [Concatenate(axis=-2, name=f'{i}_mbox_loc')(mbox_loc_layers[i])
+                    for i in range(len(mbox_loc_layers))]
+        mbox_loc = tf.stack(mbox_loc, axis=1)
 
         # Concatenate default boxes from different feature map layers
-        mbox_default_boxes = Concatenate(axis=-2, name='mbox_default_boxes')(mbox_default_box_layers)
+        mbox_default_boxes = [Concatenate(axis=-2, name=f'{i}_mbox_default_boxes')(mbox_default_box_layers[i])
+                              for i in range(len(mbox_default_box_layers))]
+        mbox_default_boxes = tf.stack(mbox_default_boxes, axis=1)
 
         # Concatenate confidence score predictions, bounding box predictions, and default boxes
-        predictions = Concatenate(axis=-1, name='predictions')([mbox_conf_softmax, mbox_loc, mbox_default_boxes])
+        predictions = [Concatenate(axis=-1, name='predictions')([mbox_conf_softmax, mbox_loc, mbox_default_boxes])]
 
         ssd_pred_model = Model(inputs=self.base_model.input, outputs=predictions)
         ssd_pred_model.summary()
 
         return ssd_pred_model
 
-    def fit(self, train_data, steps_per_epoch=None, epochs=1, validation_data=None, validation_steps=None,
+    def fit(self, train_data, steps_per_epoch=None, epochs=None, validation_data=None, validation_steps=None,
             callbacks=None, verbose=1, class_weight=None):
-        for layer in self.vgg16_layers:
+        epochs = self.epochs if epochs is None else epochs  # Function caller can override
+
+        # Freeze specified layers
+        for idx in self.frozen_layers:
+            layer = self.model.get_layer(index=idx)
             layer.trainable = False
+
+        # TODO: Finish implementation of this function (fitting to custom data generator)
+
         self.model.compile(optimizer=self.optimizer_extract, loss='categorical_crossentropy', metrics=self.metrics,
                            run_eagerly=True)
-        history_extract = self.model.fit(train_data, steps_per_epoch=steps_per_epoch, epochs=self.extract_epochs,
+        history_extract = self.model.fit(train_data, steps_per_epoch=steps_per_epoch, epochs=epochs,
                                          validation_data=validation_data, validation_steps=validation_steps,
                                          callbacks=callbacks,
                                          verbose=verbose, class_weight=class_weight)
-        for layer in self.vgg16_layers[self.finetune_layer:]:
-            layer.trainable = True
-        self.model.compile(optimizer=self.optimizer_finetune, loss='categorical_crossentropy', metrics=self.metrics,
-                           run_eagerly=True)
-        history_finetune = self.model.fit(train_data, steps_per_epoch=steps_per_epoch, epochs=epochs,
-                                          initial_epoch=history_extract.epoch[-1],
-                                          validation_data=validation_data, validation_steps=validation_steps,
-                                          callbacks=callbacks,
-                                          verbose=verbose, class_weight=class_weight)
-
-    def evaluate(self, test_data, verbose=1):
-        return self.model.evaluate(test_data, verbose=verbose)
-
-    def predict(self, test_data, verbose=1):
-        return self.model.predict(test_data, verbose=verbose)
-
-    @property
-    def metrics_names(self):
-        return self.model.metrics_names
-
-
-def vgg16(model_config, input_shape, metrics, n_classes, mixed_precision, output_bias=None):
-    '''
-    Defines a model based on a pretrained VGG16 for binary US classification.
-    :param model_config: A dictionary of parameters associated with the model architecture
-    :param input_shape: The shape of the model input
-    :param metrics: Metrics to track model's performance
-    :param mixed_precision: Whether to use mixed precision (use if you have GPU with compute capacity >= 7.0)
-    :param output_bias: bias initializer of output layer
-    :return: a Keras Model object with the architecture defined in this method
-    '''
-
-    # Set hyperparameters
-    lr = model_config['LR']
-    dropout = model_config['DROPOUT']
-    weight_decay = model_config['L2_LAMBDA']
-    optimizer = Adam(learning_rate=lr)
-    frozen_layers = model_config['FROZEN_LAYERS']
-    fc0_nodes = model_config['NODES_DENSE0']
-
-    print("MODEL CONFIG: ", model_config)
-
-    if mixed_precision:
-        tf.train.experimental.enable_mixed_precision_graph_rewrite(optimizer)
-
-    if output_bias is not None:
-        output_bias = Constant(output_bias)  # Set initial output bias
-
-    # Start with pretrained VGG16
-    X_input = Input(input_shape, name='input')
-    base_model = VGG16(include_top=False, weights='imagenet', input_shape=input_shape, input_tensor=X_input)
-
-    # Freeze layers
-    for layers in range(len(frozen_layers)):
-        layer2freeze = frozen_layers[layers]
-        print('Freezing layer: ' + str(layer2freeze))
-        base_model.layers[layer2freeze].trainable = False
-
-    X = base_model.output
-
-    # Add custom top layers
-    X = GlobalAveragePooling2D()(X)
-    X = Dropout(dropout)(X)
-    X = Dense(n_classes, bias_initializer=output_bias, name='logits')(X)
-    Y = Activation('softmax', dtype='float32', name='output')(X)
-
-    # Set model loss function, optimizer, metrics.
-    model = Model(inputs=X_input, outputs=Y)
-    model.summary()
-    model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=metrics)
-    return model
-
-
-class CutoffVGG16:
-
-    def __init__(self, model_config, input_shape, metrics, n_classes, mixed_precision=False, output_bias=None):
-        self.lr_extract = model_config['LR_EXTRACT']
-        self.lr_finetune = model_config['LR_FINETUNE']
-        self.dropout = model_config['DROPOUT']
-        self.cutoff_layer = model_config['CUTOFF_LAYER']
-        self.finetune_layer = model_config['FINETUNE_LAYER']
-        self.extract_epochs = model_config['EXTRACT_EPOCHS']
-        self.optimizer_extract = Adam(learning_rate=self.lr_extract)
-        self.optimizer_finetune = RMSprop(learning_rate=self.lr_finetune)
-        self.output_bias = output_bias
-        self.n_classes = n_classes
-        self.input_shape = input_shape
-        self.metrics = metrics
-        self.mixed_precision = mixed_precision
-        self.model = self.define_model()
-
-    def define_model(self):
-        X_input = Input(shape=self.input_shape, name='input')
-        vgg16 = VGG16(input_shape=self.input_shape, include_top=False, weights='imagenet')
-        self.vgg16_layers = vgg16.layers[1:self.cutoff_layer]
-        X = X_input
-        for layer in self.vgg16_layers:
-            X = layer(X)
-        X = GlobalAveragePooling2D(name='global_avgpool')(X)
-        X = Dropout(self.dropout)(X)
-        Y = Dense(self.n_classes, activation='softmax', bias_initializer=self.output_bias, name='output')(X)
-        model = Model(inputs=X_input, outputs=Y)
-        model.summary()
-        return model
-
-    def fit(self, train_data, steps_per_epoch=None, epochs=1, validation_data=None, validation_steps=None,
-            callbacks=None, verbose=1, class_weight=None):
-        for layer in self.vgg16_layers:
-            layer.trainable = False
-        self.model.compile(optimizer=self.optimizer_extract, loss='categorical_crossentropy', metrics=self.metrics,
-                           run_eagerly=True)
-        history_extract = self.model.fit(train_data, steps_per_epoch=steps_per_epoch, epochs=self.extract_epochs,
-                                         validation_data=validation_data, validation_steps=validation_steps,
-                                         callbacks=callbacks,
-                                         verbose=verbose, class_weight=class_weight)
-        for layer in self.vgg16_layers[self.finetune_layer:]:
-            layer.trainable = True
-        self.model.compile(optimizer=self.optimizer_finetune, loss='categorical_crossentropy', metrics=self.metrics,
-                           run_eagerly=True)
-        history_finetune = self.model.fit(train_data, steps_per_epoch=steps_per_epoch, epochs=epochs,
-                                          initial_epoch=history_extract.epoch[-1],
-                                          validation_data=validation_data, validation_steps=validation_steps,
-                                          callbacks=callbacks,
-                                          verbose=verbose, class_weight=class_weight)
 
     def evaluate(self, test_data, verbose=1):
         return self.model.evaluate(test_data, verbose=verbose)
