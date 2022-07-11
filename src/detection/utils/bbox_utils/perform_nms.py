@@ -2,6 +2,15 @@ import tensorflow as tf
 
 
 def perform_nms(single_class, max_output_size, iou_threshold):
+    '''
+    Perform threshold based Non-maximum suppression on given boxes. Works by selecting box with highest confidence score
+    and removing surrounding boxes that exceed the IoU threshold with selected box. This process is repeated with the
+    new box excluded, until 'max_output_size' boxes are acquired or no remaining boxes are left.
+    :param single_class: Boolean masked tensor containing scores for positive classes
+    :param max_output_size: Scalar, number of maximium boxes to keep after NMS
+    :param iou_threshold: Intersection over Union threshold for filtering overlapping boxes with current selected
+    :return: Tensor of predicted boxes after removing non-maxima
+    '''
     scores = single_class[..., 1]
 
     xmin = tf.expand_dims(single_class[..., -4], axis=-1)

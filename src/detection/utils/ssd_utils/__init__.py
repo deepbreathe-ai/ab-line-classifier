@@ -3,3 +3,4 @@ from .generate_default_boxes_for_feature_map import generate_default_boxes_for_f
 from .decode_predictions import decode_predictions
 from .filter_single_class import filter_single_class
 from .filter_predictions import filter_predictions
+from .extract_bbox_from_heatmap import extract_bbox_from_heatmap
