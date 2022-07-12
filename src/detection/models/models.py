@@ -118,9 +118,9 @@ class SSD_CutoffVGG16:
                   np.linspace(self.max_scale, self.min_scale, len(self.prediction_layers[1]['DPM']))]
         num_cls_with_bg = self.n_classes + 1
 
-        mbox_conf_layers = [[] for _ in range(2)]
-        mbox_loc_layers = [[] for _ in range(2)]
-        mbox_default_box_layers = [[] for _ in range(2)]
+        mbox_conf_layers = [[], []]
+        mbox_loc_layers = [[], []]
+        mbox_default_box_layers = [[], []]
 
         for module in self.prediction_layers:
             module_name = next(iter(module))

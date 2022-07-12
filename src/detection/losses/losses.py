@@ -98,6 +98,10 @@ class SSD_LOSS:
 
         total = (classification_loss + self.alpha * pos_regression_loss) / tf.maximum(1.0, tf.cast(num_positives,
                                                                                                    tf.float32))
+
+        # TODO: multiply by batch size based on magnitude of loss terms during training run and/or change denominator
+        #       to be all anchor boxes instead of only positive ones
+
         return total
 
     @staticmethod

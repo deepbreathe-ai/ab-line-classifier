@@ -6,7 +6,7 @@ def extract_bbox_from_heatmap(heatmap, threshold=None, max_val=255, thresh_type=
                               perform_otsu=False, perform_dilation=False, dilation_kernel_size=(1, 5), dilation_iters=1,
                               min_contour_size=20):
     '''
-    Extract bounding box coordinated from a heatmap (saliency map) around the highest activations.
+    Extract bounding box coordinates from a heatmap (saliency map) around the highest activations.
     :param heatmap: Original heatmap
     :param threshold: Integer value for thresholding cutoff
     :param max_val: Integer value for max pixel value
