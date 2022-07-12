@@ -1,8 +1,5 @@
 import dill
 import time
-import yaml
-import os
-import numpy as np
 import json
 import pandas as pd
 from sklearn.metrics import *
@@ -13,7 +10,7 @@ import cv2
 from onnx_tf.backend import prepare
 
 from src.visualization.visualization import *
-from src.models.models import get_model
+from src.classification.models.models import get_model
 from src.deploy import AB_classifier_preprocess
 
 cfg = yaml.full_load(open(os.getcwd() + "/config.yml", 'r'))

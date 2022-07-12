@@ -9,9 +9,9 @@ from tkinter import filedialog as fd
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.models import Model
-from src.predict import predict_set
+from src.classification.predict import predict_set
 from src.visualization.visualization import visualize_heatmap
-from src.models.models import get_model
+from src.classification.models.models import get_model
 
 cfg = yaml.full_load(open(os.getcwd() + "/config.yml", 'r'))
 

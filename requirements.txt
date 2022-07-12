@@ -1,4 +1,4 @@
-tensorboard==2.4.1
+tensorboard
 tensorflow==2.5.1
 tensorflow-addons==0.12.1
 opencv_python==4.2.0.34
